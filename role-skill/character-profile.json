@@ -1,12 +1,14 @@
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "source": "index.tsx",
   "speakerCatalog": {
-    "totalSpeakers": 4,
+    "totalSpeakers": 7,
     "characterCount": 3,
     "narratorCount": 1,
+    "reserveCount": 3,
     "characterRoleIds": ["ROLE_01", "ROLE_02", "ROLE_03"],
-    "narratorRoleId": "NARRATOR"
+    "narratorRoleId": "NARRATOR",
+    "reserveRoleIds": ["ROLE_04", "ROLE_05", "ROLE_06"]
   },
   "roles": [
     {
@@ -17,9 +19,9 @@
       "level": 1,
       "themeColor": "#4A90E2",
       "statusCode": { "start": 1, "complete": 2 },
-      "images": {
-        "idle": "https://cdncs.101.com/v0.1/static/ndr_529_1741fb/esp/assets/3b96ca30-baff-42dd-a465-ae53db3a671a.pkg/%E5%9B%BE%E7%89%87%E7%B4%A0%E6%9D%90.jpg",
-        "speaking": "https://cdncs.101.com/v0.1/static/ndr_529_1741fb/esp/assets/ddc6080b-a496-4f15-91bb-961e3d0d9da7.pkg/%E5%9B%BE%E7%89%87%E7%B4%A0%E6%9D%90.jpg"
+      "ttsVoice": { "model": 10118, "ref_audio": 10290 },
+      "images": {-608b-4c0d-9112-0d4b7639232a",
+        "speaking": "https://gcdncs.101.com/v0.1/static/aic_service_scontent/game/xiao_an_speaking.png?serviceName=aic_service_scontent&attachment=true"
       },
       "tts": [
         {
@@ -44,9 +46,9 @@
       "level": 2,
       "themeColor": "#FF6B9D",
       "statusCode": { "start": 3, "complete": 4 },
-      "images": {
-        "idle": "https://cdncs.101.com/v0.1/static/ndr_529_1741fb/esp/assets/d54e6d69-25a6-44c3-85a2-162e582f155b.pkg/%E5%9B%BE%E7%89%87%E7%B4%A0%E6%9D%90.jpg",
-        "speaking": "https://cdncs.101.com/v0.1/static/ndr_529_1741fb/esp/assets/628e67d6-9594-4f04-950f-7fb57c9e12c4.pkg/%E5%9B%BE%E7%89%87%E7%B4%A0%E6%9D%90.jpg"
+      "ttsVoice": { "model": 10125, "ref_audio": 10297 },
+      "images": {-343b-4a35-873f-c1a964c5a0a5",
+        "speaking": "https://gcdncs.101.com/v0.1/static/aic_service_scontent/game/xiao_rui_speaking2.png?serviceName=aic_service_scontent&attachment=true"
       },
       "tts": [
         {
@@ -71,9 +73,9 @@
       "level": 3,
       "themeColor": "#52C41A",
       "statusCode": { "start": 5, "complete": 6 },
-      "images": {
-        "idle": "https://cdncs.101.com/v0.1/static/ndr_529_1741fb/esp/assets/aecad883-0cac-4dfd-9695-9f8aba24898e.pkg/%E5%9B%BE%E7%89%87%E7%B4%A0%E6%9D%90.jpg",
-        "speaking": "https://cdncs.101.com/v0.1/static/ndr_529_1741fb/esp/assets/be0e79e8-b387-4573-a67f-6365b70daf92.pkg/%E5%9B%BE%E7%89%87%E7%B4%A0%E6%9D%90.jpg"
+      "ttsVoice": { "model": 10110, "ref_audio": 10282 },
+      "images": {-2401-4439-a739-2d54b80f16e8",
+        "speaking": "https://gcdncs.101.com/v0.1/static/aic_service_scontent/game/xiao_bu_speaking.png?serviceName=aic_service_scontent&attachment=true"
       },
       "tts": [
         {
@@ -91,12 +93,50 @@
       ]
     }
   ],
+  "reserveRoles": [
+    {
+      "roleId": "ROLE_04",
+      "roleKey": "mama",
+      "speakerType": "reserve",
+      "name": "妈妈",
+      "ttsVoice": { "model": 10114, "ref_audio": 10286 },
+      "images": {
+        "idle": "https://cs.101.com/v0.1/download?dentryId=05f40274-7de0-4c35-9479-49b57dfc0d87",
+        "speaking": null
+      },
+      "note": "备用角色，缺少 speaking 图片"
+    },
+    {
+      "roleId": "ROLE_05",
+      "roleKey": "baba",
+      "speakerType": "reserve",
+      "name": "爸爸",
+      "ttsVoice": { "model": 10115, "ref_audio": 10287 },
+      "images": {
+        "idle": "https://cs.101.com/v0.1/download?dentryId=b9de3694-9302-4a09-94b4-5ec59913f344",
+        "speaking": null
+      },
+      "note": "备用角色，缺少 speaking 图片"
+    },
+    {
+      "roleId": "ROLE_06",
+      "roleKey": "brain_host",
+      "speakerType": "reserve",
+      "name": "脑科学主讲人",
+      "images": {
+        "idle": "https://cs.101.com/v0.1/download?dentryId=85d09913-cdcc-4b08-88c4-f73e3d045742",
+        "speaking": null
+      },
+      "note": "备用角色，缺少 speaking 图片"
+    }
+  ],
   "narrator": {
     "roleId": "NARRATOR",
     "roleKey": "narrator",
     "speakerType": "narrator",
     "name": "旁白",
     "level": 0,
+    "ttsVoice": { "model": 10112, "ref_audio": 10284 },
     "tts": [
       {
         "content": "大声说出目标",
