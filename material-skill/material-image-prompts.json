@@ -1,0 +1,223 @@
+{
+  "version": "1.0.0",
+  "source": "material-art-checklist.json",
+  "purpose": "可直接用于文生图的素材提示词清单（不含角色）",
+  "stylePreset": {
+    "visualStyle": "儿童教育游戏插画，2D扁平卡通，线条清晰，色彩明快，轻阴影",
+    "quality": "high detail, clean edges, centered composition",
+    "background": "plain light background or transparent background when required",
+    "negativePrompt": "photorealistic, realistic human, text watermark, logo, blurry, noisy, lowres, distorted geometry, extra objects, cluttered background"
+  },
+  "defaultOutput": {
+    "format": "png",
+    "size": "1024x1024",
+    "transparentBackground": false
+  },
+  "prompts": [
+    {
+      "materialId": "L1-S3-IMG-01",
+      "materialName": "房屋未上色图",
+      "type": "single-image",
+      "prompt": "儿童游戏步骤示意图，一栋简洁卡通房屋线稿，屋顶、墙体、门区域清晰分区，完全未填色，构图居中，白底",
+      "negativePrompt": "filled colors, complex background",
+      "size": "1024x1024"
+    },
+    {
+      "materialId": "L1-S3-IMG-02",
+      "materialName": "房屋部分上色图",
+      "type": "single-image",
+      "prompt": "儿童游戏步骤示意图，与房屋未上色图同构，一栋卡通房屋，只有部分区域上色（例如屋顶上色，墙体和门未上色），构图居中，白底",
+      "size": "1024x1024"
+    },
+    {
+      "materialId": "L1-S3-IMG-03",
+      "materialName": "房屋完全上色图",
+      "type": "single-image",
+      "prompt": "儿童游戏步骤示意图，与前两张同构，一栋卡通房屋全部区域已上色，颜色鲜明协调，构图居中，白底",
+      "size": "1024x1024"
+    },
+    {
+      "materialId": "L1-S3-IMG-04",
+      "materialName": "第一关干扰图",
+      "type": "single-image",
+      "prompt": "儿童游戏干扰步骤图，主题与涂色房屋无关，可用简单拼图块或篮球相关小图，卡通扁平风格，构图居中，白底",
+      "size": "1024x1024"
+    },
+    {
+      "materialId": "L1-S4-PAT-01",
+      "materialName": "房屋主图案",
+      "type": "layered-asset",
+      "prompt": "儿童涂色游戏主图案，卡通房屋，明确分为屋顶、墙体、门三个闭合区域，黑色描边，内部默认白色，适合点击填色",
+      "transparentBackground": true,
+      "size": "1024x1024",
+      "exportNotes": "建议导出SVG或分层PNG，保证区域可独立填色"
+    },
+    {
+      "materialId": "L1-S4-PAT-02",
+      "materialName": "花朵主图案",
+      "type": "layered-asset",
+      "prompt": "儿童涂色游戏主图案，简洁卡通花朵，至少3个花瓣为独立闭合区域，黑色描边，内部默认白色，适合点击填色",
+      "transparentBackground": true,
+      "size": "1024x1024",
+      "exportNotes": "建议导出SVG或分层PNG，花瓣区域分层"
+    },
+    {
+      "materialId": "L1-S4-UI-01",
+      "materialName": "纯色颜色块组",
+      "type": "ui-set",
+      "prompt": "儿童教育游戏UI，6个圆角纯色颜色块按钮（红、青、黄、薄荷、粉、紫），统一尺寸，白底，包含普通态",
+      "transparentBackground": true,
+      "size": "1024x1024",
+      "variants": ["normal", "selected-glow"]
+    },
+    {
+      "materialId": "L2-S3-IMG-01",
+      "materialName": "小鱼拼1块示意图",
+      "type": "single-image",
+      "prompt": "七巧板步骤示意图，鱼形轮廓中仅放入1块三角形拼块，其余为空，卡通扁平风格，构图居中，白底",
+      "size": "1024x1024"
+    },
+    {
+      "materialId": "L2-S3-IMG-02",
+      "materialName": "小鱼拼4块示意图",
+      "type": "single-image",
+      "prompt": "七巧板步骤示意图，与上一张同构鱼形轮廓，已放入4块拼图，进度明显，卡通扁平风格，构图居中，白底",
+      "size": "1024x1024"
+    },
+    {
+      "materialId": "L2-S3-IMG-03",
+      "materialName": "目标图案完整示意图",
+      "type": "single-image",
+      "prompt": "七巧板完成态示意图，完整拼成小鱼或轮船图案，形状清晰，色块区分明确，卡通扁平风格，构图居中，白底",
+      "size": "1024x1024"
+    },
+    {
+      "materialId": "L2-S3-IMG-04",
+      "materialName": "第二关干扰图A",
+      "type": "single-image",
+      "prompt": "儿童游戏干扰步骤图，与七巧板拼装流程无关，可用涂色画笔主题元素，卡通扁平风格，居中白底",
+      "size": "1024x1024"
+    },
+    {
+      "materialId": "L2-S3-IMG-05",
+      "materialName": "第二关干扰图B",
+      "type": "single-image",
+      "prompt": "儿童游戏干扰步骤图，与七巧板拼装流程无关，可用投篮主题元素，卡通扁平风格，居中白底",
+      "size": "1024x1024"
+    },
+    {
+      "materialId": "L2-S4-OUT-01",
+      "materialName": "小鱼轮廓板",
+      "type": "single-image",
+      "prompt": "七巧板目标轮廓板，小鱼轮廓线清晰，内部可作为拼图放置区域，浅灰底+深色线稿，居中",
+      "transparentBackground": true,
+      "size": "1024x1024"
+    },
+    {
+      "materialId": "L2-S4-OUT-02",
+      "materialName": "轮船轮廓板",
+      "type": "single-image",
+      "prompt": "七巧板目标轮廓板，轮船轮廓线清晰，风格与小鱼轮廓一致，内部可作为拼图放置区域，居中",
+      "transparentBackground": true,
+      "size": "1024x1024"
+    },
+    {
+      "materialId": "L2-S4-PIE-01",
+      "materialName": "七巧板拼图块组",
+      "type": "sprite-set",
+      "prompt": "七巧板7块基础拼图，扁平卡通色块，边缘清晰，适合拖拽旋转，透明背景",
+      "transparentBackground": true,
+      "size": "1024x1024",
+      "variants": ["piece-1", "piece-2", "piece-3", "piece-4", "piece-5", "piece-6", "piece-7"],
+      "exportNotes": "建议每块单独导出PNG"
+    },
+    {
+      "materialId": "L3-S3-IMG-01",
+      "materialName": "准备投篮示意图",
+      "type": "single-image",
+      "prompt": "投篮步骤示意图，篮球位于下方准备投出，篮筐在上方，动作前状态，卡通扁平风格，居中白底",
+      "size": "1024x1024"
+    },
+    {
+      "materialId": "L3-S3-IMG-02",
+      "materialName": "篮球飞行示意图",
+      "type": "single-image",
+      "prompt": "投篮步骤示意图，篮球沿抛物线飞行中，篮筐在上方目标区域，卡通扁平风格，动势清晰，居中白底",
+      "size": "1024x1024"
+    },
+    {
+      "materialId": "L3-S3-IMG-03",
+      "materialName": "投中篮筐示意图",
+      "type": "single-image",
+      "prompt": "投篮步骤示意图，篮球进入篮筐瞬间，成功反馈感明显，卡通扁平风格，居中白底",
+      "size": "1024x1024"
+    },
+    {
+      "materialId": "L3-S3-IMG-04",
+      "materialName": "第三关干扰图A",
+      "type": "single-image",
+      "prompt": "儿童游戏干扰步骤图，与投篮流程无关，可用涂色房屋主题元素，卡通扁平风格，居中白底",
+      "size": "1024x1024"
+    },
+    {
+      "materialId": "L3-S3-IMG-05",
+      "materialName": "第三关干扰图B",
+      "type": "single-image",
+      "prompt": "儿童游戏干扰步骤图，与投篮流程无关，可用七巧板主题元素，卡通扁平风格，居中白底",
+      "size": "1024x1024"
+    },
+    {
+      "materialId": "L3-S4-OBJ-01",
+      "materialName": "篮球",
+      "type": "single-object",
+      "prompt": "儿童游戏篮球图标，2D扁平卡通，橙色球体带简洁分割线，透明背景，适合点击交互",
+      "transparentBackground": true,
+      "size": "512x512"
+    },
+    {
+      "materialId": "L3-S4-OBJ-02",
+      "materialName": "篮筐",
+      "type": "single-object",
+      "prompt": "儿童游戏篮筐图标，包含篮圈和网兜，2D扁平卡通，透明背景，适合横向移动",
+      "transparentBackground": true,
+      "size": "768x512"
+    },
+    {
+      "materialId": "GLOBAL-UI-01",
+      "materialName": "步骤槽位标识",
+      "type": "ui-component",
+      "prompt": "儿童教育游戏拖拽槽位UI，3个圆角矩形容器（第一步、第二步、第三步），清晰描边，支持默认态和错误高亮态",
+      "transparentBackground": true,
+      "size": "1280x512",
+      "variants": ["default", "error-highlight", "hint-highlight"]
+    },
+    {
+      "materialId": "GLOBAL-UI-02",
+      "materialName": "超时弹窗",
+      "type": "ui-component",
+      "prompt": "儿童游戏超时弹窗UI，包含标题区域、提示文案区域、重试按钮区域，卡通圆角面板，柔和阴影，透明背景",
+      "transparentBackground": true,
+      "size": "1024x768",
+      "variants": ["normal", "button-hover", "button-pressed"]
+    },
+    {
+      "materialId": "GLOBAL-UI-03",
+      "materialName": "星级奖励面板",
+      "type": "ui-component",
+      "prompt": "儿童游戏通关奖励面板，中心展示1-3颗星占位，庆祝氛围但不含角色，卡通圆角面板，透明背景",
+      "transparentBackground": true,
+      "size": "1024x768",
+      "variants": ["one-star", "two-star", "three-star"]
+    }
+  ],
+  "pipelineTips": {
+    "batchGenerateOrder": [
+      "P0步骤图",
+      "P0主体任务道具",
+      "通用UI",
+      "P1干扰图"
+    ],
+    "consistencyRule": "同一关卡的步骤图保持同构构图与统一色板",
+    "dynamicAssetRule": "动态素材优先输出透明背景+多状态切片，不建议单张合成大图"
+  }
+}

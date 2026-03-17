@@ -1,0 +1,86 @@
+{
+  "version": "1.0.0",
+  "source": "character-profile.json",
+  "speakerType": "character",
+  "count": 3,
+  "roles": [
+    {
+      "roleId": "ROLE_01",
+      "roleKey": "xiao_an",
+      "name": "小安",
+      "level": 1,
+      "themeColor": "#4A90E2",
+      "statusCode": { "start": 1, "complete": 2 },
+      "images": {
+        "idle": "https://cdncs.101.com/v0.1/static/ndr_529_1741fb/esp/assets/3b96ca30-baff-42dd-a465-ae53db3a671a.pkg/%E5%9B%BE%E7%89%87%E7%B4%A0%E6%9D%90.jpg",
+        "speaking": "https://cdncs.101.com/v0.1/static/ndr_529_1741fb/esp/assets/ddc6080b-a496-4f15-91bb-961e3d0d9da7.pkg/%E5%9B%BE%E7%89%87%E7%B4%A0%E6%9D%90.jpg"
+      },
+      "tts": [
+        {
+          "content": "我现在要涂色。",
+          "url": "https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=8f1c6a77-8ecf-41fa-a7a2-12573a0c9b1f"
+        },
+        {
+          "content": "小安，你打算这次涂几个图案呢？",
+          "url": "https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=6b5f8b1c-9466-4817-86e5-0687ba299011"
+        },
+        {
+          "content": "点一点小安，看看要做什么",
+          "url": "https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=fa455736-f71d-4bbc-a60b-a4138fa4630f"
+        }
+      ]
+    },
+    {
+      "roleId": "ROLE_02",
+      "roleKey": "xiao_rui",
+      "name": "小瑞",
+      "level": 2,
+      "themeColor": "#FF6B9D",
+      "statusCode": { "start": 3, "complete": 4 },
+      "images": {
+        "idle": "https://cdncs.101.com/v0.1/static/ndr_529_1741fb/esp/assets/d54e6d69-25a6-44c3-85a2-162e582f155b.pkg/%E5%9B%BE%E7%89%87%E7%B4%A0%E6%9D%90.jpg",
+        "speaking": "https://cdncs.101.com/v0.1/static/ndr_529_1741fb/esp/assets/628e67d6-9594-4f04-950f-7fb57c9e12c4.pkg/%E5%9B%BE%E7%89%87%E7%B4%A0%E6%9D%90.jpg"
+      },
+      "tts": [
+        {
+          "content": "我现在要拼七巧板。",
+          "url": "https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=4fd3da8d-6474-4b06-9b2f-a2b21ae246ce"
+        },
+        {
+          "content": "你这次打算拼几个图案呢？",
+          "url": "https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=c071c872-c3a5-4772-bd0f-f50bfbe7bfe4"
+        },
+        {
+          "content": "点一点小瑞，看看要做什么",
+          "url": "https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=30d35c27-8763-420d-8cac-5e0f15991231"
+        }
+      ]
+    },
+    {
+      "roleId": "ROLE_03",
+      "roleKey": "xiao_bu",
+      "name": "小布",
+      "level": 3,
+      "themeColor": "#52C41A",
+      "statusCode": { "start": 5, "complete": 6 },
+      "images": {
+        "idle": "https://cdncs.101.com/v0.1/static/ndr_529_1741fb/esp/assets/aecad883-0cac-4dfd-9695-9f8aba24898e.pkg/%E5%9B%BE%E7%89%87%E7%B4%A0%E6%9D%90.jpg",
+        "speaking": "https://cdncs.101.com/v0.1/static/ndr_529_1741fb/esp/assets/be0e79e8-b387-4573-a67f-6365b70daf92.pkg/%E5%9B%BE%E7%89%87%E7%B4%A0%E6%9D%90.jpg"
+      },
+      "tts": [
+        {
+          "content": "我现在要练习投篮。",
+          "url": "https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=2c8a27b8-0e07-4a16-bb6c-e80e135a6875"
+        },
+        {
+          "content": "你这次打算练习几轮投篮呢？",
+          "url": "https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=ae76fc4d-1af3-401f-a8c3-563c2db8bcb9"
+        },
+        {
+          "content": "点一点小布，看看要做什么",
+          "url": "https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=32b1662d-774f-44f8-8530-f0cc80910f7f"
+        }
+      ]
+    }
+  ]
+}

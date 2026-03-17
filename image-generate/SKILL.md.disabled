@@ -1,0 +1,113 @@
+---
+name: image-generate
+description: 根据文本提示词生成图片。当用户需要 AI 生成图片、根据描述创建图片、或需要 AI 绘图时使用。触发词包括"生成图片"、"画一张"、"出图"、"generate image"、"文生图"等图片生成相关请求。
+---
+
+# Image Generation
+
+Generate images from text descriptions using AI Hub's image generation API.
+
+**IMPORTANT**: This skill generates images by calling a standalone script via Bash. The generated **image files** (PNG/JPG/WebP) are then incorporated into your project, NOT the generation script itself. The script remains in the skills directory and is only used as a tool during development.
+
+## Prerequisites
+
+Required environment variables:
+- `AI_HUB_KEY`: API key for AI Hub (required)
+- `BTS_NAME`: BTS app name (required)
+- `BTS_SECRET`: BTS app secret (required)
+
+Optional environment variables:
+- `AI_HUB_HOST`: API endpoint (default: https://ai-hub-api.aiae.ndhy.com)
+- `AI_HUB_BOT_ENV`: Environment name (default: prod)
+- `BTS_HOST`: BTS authentication host (default: https://ucbts.101.com)
+
+## Usage
+
+**IMPORTANT**: The script path `scripts/image-generate.js` is relative to this skill's root directory. Before executing:
+
+1. First locate where this skill is installed (the directory containing this SKILL.md file)
+2. Construct the full path: `<skill-root-directory>/scripts/image-generate.js`
+3. Execute the script using the complete path
+
+```bash
+# Example: If skill is at ~/.claude/skills/image-generate
+# Then the script is at: ~/.claude/skills/image-generate/scripts/image-generate.js
+bun run <full-path-to-skill-directory>/scripts/image-generate.js --query "<prompt>" [options]
+```
+
+### Required Arguments
+
+- `--query` or `-q`: Text description of the image to generate
+
+### Optional Arguments
+
+- `--width`: Image width in pixels (default: 4096)
+- `--height`: Image height in pixels (default: 4096)
+   - Constraint: `width * height` (total pixels) must be within `[2560x1440=3686400, 4096x4096=16777216]`.
+- `--outFile` or `--output`: Specific output file path (relative to cwd; auto-adds extension if missing; paths ending with `/` or `\` are treated as directories)
+- `--outDir`: Output directory when --outFile not provided (default: output)
+
+### Output
+
+The script prints the absolute path of the saved image to stdout. **DO NOT use the Read tool to view the image** as this consumes excessive tokens. Instead, directly use the image path in your project code.
+
+## Workflow
+
+1. Locate the skill directory and call the generation script with Bash tool:
+   ```bash
+   bun run <skill-directory>/scripts/image-generate.js --query "detailed prompt" --width 4096 --height 4096
+   ```
+
+2. The script will:
+   - Authenticate via BTS
+   - Submit the workflow to AI Hub
+   - Stream results via SSE
+   - Download the generated image
+   - Print the saved file path to stdout
+
+3. **IMPORTANT**: Do NOT use the Read tool to view the generated image. This wastes tokens.
+
+4. Provide the file **relative** path (start with dot, eg: ../output/image.jpg) to the user and integrate the image into the project code
+
+5. **CRITICAL**: When integrating images into code, you MUST use ES6 import statements:
+   ```javascript
+   // ✅ CORRECT - Use import statement
+   import myImage from './output/image.jpg'
+   // Then use: <img src={myImage} />
+
+   // ❌ WRONG - Don't use string paths directly
+   // <img src="./output/image.jpg" />
+   ```
+   This ensures the bundler (Vite/Webpack) processes the image correctly and generates proper build paths. Direct string paths will break in production builds.
+
+## Examples
+
+Generate default size (4096x4096) image:
+```bash
+bun run <skill-directory>/scripts/image-generate.js --query "a serene mountain landscape at sunset"
+```
+
+Generate specific dimensions:
+```bash
+bun run <skill-directory>/scripts/image-generate.js --query "cute robot playing chess" --width 2560 --height 2560
+```
+
+Save to specific file:
+```bash
+bun run <skill-directory>/scripts/image-generate.js --query "futuristic city skyline" --outFile "./my-images/city.jpg"
+```
+
+## Error Handling
+
+Common errors:
+- **Missing AI_HUB_KEY**: Inform user to set the environment variable
+- **Missing BTS credentials**: Inform user to set BTS_NAME, BTS_SECRET
+- **HTTP errors**: Check API endpoint and credentials
+- **Workflow failures**: Review the error message and adjust the prompt or parameters
+
+## Notes
+
+- Generated images are automatically timestamped and named based on the prompt
+- Default output directory: `./output/`
+- Supports PNG, JPG, and WebP formats (auto-detected from response)
+- File extension is automatically inferred from content-type when not specified
