@@ -75,10 +75,9 @@
 
 | 顺序 | Skill | 职责 |
 |------|-------|------|
-| 1 | `bgm-skill` | 提炼 BGM 规划 |
-| 2 | `extract-skill` | 提炼资源（角色 + TTS + 素材） |
-| 3 | `produce-skill` | 批量生产素材（提示词 + 图片 + TTS） |
-| 4 | `check-skill` | 规则验证 |
+| 1 | `extract-skill` | 提炼资源（TTS + 素材） |
+| 2 | `produce-skill` | 批量生产素材（提示词 + 图片 + TTS） |
+| 3 | `check-skill` | 规则验证 |
 
 ### 道具工作组（props-work）
 > 触发词：道具工作流、处理道具、props work
