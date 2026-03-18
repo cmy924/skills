@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "lastUpdated": "2026-03-18",
-  "description": "角色资源库 — 集中管理所有可复用角色的图片、TTS音色、主题色等信息",
+  "description": "角色资源库 — 集中管理所有可复用角色的图片、主题色等视觉资源（不含 TTS）",
   "characters": [
     {
       "id": "xiao_an",
@@ -24,11 +24,6 @@
           "transparentBg": true,
           "status": "deployed"
         }
-      },
-      "tts": {
-        "model": 10139,
-        "ref_audio": 10311,
-        "voiceDescription": "男孩童声，活泼阳光"
       },
       "sourceProject": "E7s6BSDiq3Bn80WDZQ3Da5_3",
       "usedInLevels": [1],
@@ -56,11 +51,6 @@
           "status": "deployed"
         }
       },
-      "tts": {
-        "model": 10138,
-        "ref_audio": 10310,
-        "voiceDescription": "女孩童声，温柔可爱"
-      },
       "sourceProject": "E7s6BSDiq3Bn80WDZQ3Da5_3",
       "usedInLevels": [2],
       "status": "active"
@@ -87,29 +77,8 @@
           "status": "deployed"
         }
       },
-      "tts": {
-        "model": 10141,
-        "ref_audio": 10313,
-        "voiceDescription": "男孩童声，憨厚可爱"
-      },
       "sourceProject": "E7s6BSDiq3Bn80WDZQ3Da5_3",
       "usedInLevels": [3],
-      "status": "active"
-    },
-    {
-      "id": "narrator",
-      "name": "旁白",
-      "gender": null,
-      "themeColor": null,
-      "description": "旁白角色，非可视，仅提供语音引导",
-      "images": null,
-      "tts": {
-        "model": 10112,
-        "ref_audio": 10284,
-        "voiceDescription": "成熟女声旁白，温和引导"
-      },
-      "sourceProject": "E7s6BSDiq3Bn80WDZQ3Da5_3",
-      "usedInLevels": [1, 2, 3],
       "status": "active"
     }
   ],

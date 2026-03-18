@@ -3,9 +3,14 @@ name: ai-sounds
 description: 使用 ai-sounds 库播放音效，增强用户交互体验。用于任务完成时播放反馈音（"clear1"、"clear2"）、错误提示音（"error1-3"）、进度提示音（"cursor1-8"）、确认音（"decide1-24"）等场景。项目已安装 ai-sounds npm 包，仅支持浏览器环境。触发词包括"播放音效"、"音效反馈"、"play sound"、"sound effect"。
 ---
 
-# AI Sounds - Sound Effects Player
+# AI Sounds — 音效资源库
 
-Play sound effects during conversations to enhance user interaction and provide audio feedback.
+仅负责游戏内音效（SE）的播放，增强用户交互体验。
+
+> ⛔ **职责边界：** 本 skill 只管音效（非语言效果音）。  
+> TTS 语音由 `extract-skill` 提炼、`produce-skill` 生产。  
+> BGM 背景音乐由 `bgm-skill` 负责。  
+> 角色图片由 `roles-skill` 负责。
 
 ## Quick Start
 

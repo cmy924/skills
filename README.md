@@ -6,16 +6,16 @@
 
 | Skill | 说明 | 触发词示例 |
 |-------|------|-----------|
-| **ai-sounds** | 使用 ai-sounds 库播放音效，增强交互体验。支持反馈音、错误提示音、进度音、确认音等 | 播放音效、音效反馈、play sound |
+| **ai-sounds** | 音效资源库，仅负责游戏内音效（SE）播放。支持反馈音、错误提示音、进度音、确认音等 | 播放音效、音效反馈、play sound |
 | **bgm-skill** | BGM 库，获取匹配的背景音乐，按游戏阶段播放不同 BGM（主流程/行动进行中/暂停休息） | BGM规划、背景音乐、播放策略 |
 | **check-skill** | 根据游戏设计文档对代码进行全面自动化验证，逐条检查规则、状态机、计时器、类型安全等 | 验证项目、check、走查、自检 |
 | **copilot-instructions-skill** | 分析项目源码，自动生成 `.github/copilot-instructions.md` 协作指南 | 生成 copilot-instructions、更新协作指南 |
 | **debug-skill** | 为 React 游戏组件添加可拖拽调试面板，支持关卡跳转、状态监控，通过 `?dev=1` 激活 | debug模式、调试面板、跳关 |
-| **extract-skill** | 一站式资源提炼：角色信息、TTS 语音、素材清单，统一输出 JSON 和可视化预览页 | 资源提炼、角色信息、TTS规划、素材规划 |
+| **extract-skill** | 资源提炼（TTS + 素材），不含角色视觉资源（由 roles-skill 负责） | 资源提炼、TTS规划、素材清单 |
 | **group-skill** | Skill 分组编排器，按预定义分组批量调度执行多个 skill（初始化组、预发布组、素材工作组、道具工作组） | 项目初始化、发布前检查、素材工作流、道具工作流 |
 | **port-cleanup** | 清理 3000-3009 端口占用进程，解决 `aic dev` 启动失败和端口冲突问题 | 端口被占用、清理端口、EADDRINUSE |
 | **produce-skill** | 一站式素材生产：文生图提示词、批量素材生产线（图片+TTS）、单图快速生成。⚠️ type 11 仅限图生图场景 | 素材生产、批量生成、生成图片、TTS生产 |
-| **roles-skill** | 角色资源库，提供小安/小瑞/小布的 idle、speaking 图片 CDN 地址、TTS 音色、主题色等完整信息，跨项目复用 | 查询角色、角色库、用小安、引入角色 |
+| **roles-skill** | 角色资源库，仅负责角色视觉资源（idle/speaking 图片、主题色），不含 TTS | 查询角色、角色库、用小安、引入角色 |
 | **skill-creator** | 创建新 skill、修改和优化现有 skill、运行评估测试和基准性能分析 | 创建skill、优化skill、skill评估 |
 | **themed-react-components** | 集成 ai-courseware 主题组件库，提供中古风、蒸汽朋克、猫咪风等主题 UI 组件 | 中古风、复古、蒸汽朋克、课件组件 |
 | **transparent-bg-skill** | 图片去背景透明化，支持 AI 抠图和颜色替换两种模式 | 去背景、透明底图、抠图、remove background |
@@ -29,12 +29,12 @@
 - `upload-skill` — 本地文件上传到 CS / CDN
 
 ### 设计提炼
-- `extract-skill` — 一站式资源提炼（角色 + TTS + 素材清单）
+- `extract-skill` — 资源提炼（TTS + 素材清单，不含角色）
 - `bgm-skill` — BGM 库，按游戏阶段匹配背景音乐
-- `roles-skill` — 角色资源库（图片/TTS/主题色），跨项目复用
+- `roles-skill` — 角色视觉资源库（图片/主题色，不含 TTS）
 
 ### 开发辅助
-- `ai-sounds` — 音效播放
+- `ai-sounds` — 音效资源库（仅 SE，不含 TTS/BGM）
 - `debug-skill` — 调试面板
 - `themed-react-components` — 主题 UI 组件库
 - `port-cleanup` — 端口清理

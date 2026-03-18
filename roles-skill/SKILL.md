@@ -1,19 +1,22 @@
 ---
 name: roles-skill
-description: 角色资源库。提供小安、小瑞、小布三个角色的 idle 和 speaking 状态图片 CDN 地址、TTS 音色配置、主题色等完整信息。当新游戏项目需要复用这些角色时，通过此 skill 查询并引入对应角色资源，无需重复配置。触发词包括"查询角色"、"角色库"、"用小安"、"用小瑞"、"用小布"、"引入角色"、"roles"、"character library"、"复用角色"。
+description: 角色资源库。仅负责角色视觉资源：idle 和 speaking 状态图片 CDN 地址、主题色、性别、角色定位等。不包含 TTS 音色配置（TTS 由 extract-skill 提炼、produce-skill 生产）。当新游戏项目需要复用这些角色时，通过此 skill 查询并引入对应角色资源，无需重复配置。触发词包括"查询角色"、"角色库"、"用小安"、"用小瑞"、"用小布"、"引入角色"、"roles"、"character library"、"复用角色"。
 ---
 
 # Roles Skill — 角色资源库
 
-集中管理小安、小瑞、小布三个角色的全部资源信息，供跨项目复用。
+集中管理小安、小瑞、小布三个角色的**视觉资源**，供跨项目复用。
+
+> ⛔ **职责边界：** 本 skill 仅管理角色图片（idle/speaking）、主题色、性别等视觉资源。
+> TTS 音色配置由 `extract-skill` 提炼、`produce-skill` 生产，不在本 skill 范围内。
 
 ## 角色总览
 
-| 角色 ID | 名称 | 主题色 | idle 状态 | speaking 状态 | TTS 音色 |
-|---------|------|--------|----------|--------------|---------|
-| `xiao_an` | 小安 | `#ff6b6b` | ✅ CDN | ✅ CDN | model: 10139, ref_audio: 10311 |
-| `xiao_rui` | 小瑞 | `#4ecdc4` | ✅ CDN | ✅ CDN | model: 10138, ref_audio: 10310 |
-| `xiao_bu` | 小布 | `#ffa502` | ✅ CDN | ✅ CDN | model: 10141, ref_audio: 10313 |
+| 角色 ID | 名称 | 主题色 | idle 状态 | speaking 状态 |
+|---------|------|--------|----------|--------------|
+| `xiao_an` | 小安 | `#ff6b6b` | ✅ CDN | ✅ CDN |
+| `xiao_rui` | 小瑞 | `#4ecdc4` | ✅ CDN | ✅ CDN |
+| `xiao_bu` | 小布 | `#ffa502` | ✅ CDN | ✅ CDN |
 
 > ✅ 所有角色的 idle 和 speaking 态均已上传 CDN，可直接引用。
 
@@ -26,7 +29,6 @@ description: 角色资源库。提供小安、小瑞、小布三个角色的 idl
 - **名称：** 小安
 - **主题色：** `#ff6b6b`（暖红色）
 - **角色定位：** 第一关引导角色，性别男
-- **TTS 音色：** model `10139`，ref_audio `10311`
 
 **图片资源：**
 
@@ -42,7 +44,6 @@ description: 角色资源库。提供小安、小瑞、小布三个角色的 idl
 - **名称：** 小瑞
 - **主题色：** `#4ecdc4`（薄荷绿）
 - **角色定位：** 第二关引导角色，性别女
-- **TTS 音色：** model `10138`，ref_audio `10310`
 
 **图片资源：**
 
@@ -58,7 +59,6 @@ description: 角色资源库。提供小安、小瑞、小布三个角色的 idl
 - **名称：** 小布
 - **主题色：** `#ffa502`（橙黄色）
 - **角色定位：** 第三关引导角色，性别男
-- **TTS 音色：** model `10141`，ref_audio `10313`
 
 **图片资源：**
 
@@ -68,12 +68,6 @@ description: 角色资源库。提供小安、小瑞、小布三个角色的 idl
 | speaking | `https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=04ed3618-378c-474f-a3e8-c2d1dec7ff1b` | PNG（透明背景） | 已上传 CDN |
 
 ---
-
-### 旁白 (narrator)
-
-- **名称：** 旁白
-- **角色定位：** 非可视角色，仅提供语音引导
-- **TTS 音色：** model `10112`，ref_audio `10284`
 
 ---
 
@@ -85,7 +79,7 @@ description: 角色资源库。提供小安、小瑞、小布三个角色的 idl
 
 1. **读取本 SKILL.md** 获取角色资源信息
 2. **读取角色数据文件** `.claude/skills/roles-skill/roles-library.json` 获取结构化数据
-3. 根据用户指定的角色，将对应的图片 URL、主题色、TTS 配置写入目标项目的角色配置中
+3. 根据用户指定的角色，将对应的图片 URL、主题色写入目标项目的角色配置中
 
 **代码模板（TypeScript）：**
 
@@ -115,10 +109,12 @@ const CHARACTERS = {
 
 ### 场景 2：查询某个角色的信息
 
-当用户说"小瑞的 idle 图是什么"或"查下小安的 TTS 音色 ID"时：
+当用户说"小瑞的 idle 图是什么"或"查下小安的主题色"时：
 
 1. 读取本 SKILL.md 或 `roles-library.json`
-2. 返回对应角色的请求字段
+2. 返回对应角色的图片 URL、主题色等视觉资源
+
+> 若用户查询 TTS 音色，应指引其使用 `extract-skill` 查看 `tts.json`
 
 ### 场景 3：更新角色资源
 

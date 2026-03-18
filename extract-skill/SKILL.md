@@ -1,20 +1,20 @@
 ````skill
 ---
 name: extract-skill
-description: 一站式资源提炼。从游戏源码中提取角色信息、TTS 语音、素材清单三大类数据，统一输出 JSON 和可视化预览页。合并了原 role-skill、tts-skill、material-skill 的全部职责。触发词：资源提炼、角色信息、TTS 规划、素材规划、道具清单、角色提炼、语音提炼、素材提炼、素材清单、角色tts、旁白JSON、preview、预览页、extract。
+description: 资源提炼（TTS + 素材）。从游戏源码中提取 TTS 语音和素材清单两大类数据，统一输出 JSON 和可视化预览页。不包含角色图片/主题色等视觉资源（由 roles-skill 负责）。触发词：资源提炼、TTS 规划、素材规划、道具清单、语音提炼、素材提炼、素材清单、旁白JSON、preview、预览页、extract。
 ---
 
-# Extract Skill — 一站式资源提炼
+# Extract Skill — 资源提炼（TTS + 素材）
 
-从当前游戏组件中一次性提取全部资源信息，分三大模块输出：
+从当前游戏组件中提取 TTS 语音和素材清单，输出 JSON 和可视化预览页：
 
 | 模块 | 输出文件 | 内容 |
 |------|---------|------|
-| 角色 | `素材库/roles.json` | 角色基础信息、角色状态、角色关系 |
 | 语音 | `素材库/tts.json` | 角色台词TTS、旁白TTS、UI语音 |
 | 素材 | `素材库/materials.json` | 场景背景、道具清单、美术资源 |
 | 预览 | `素材库/preview.html` | 可视化素材总览页（含缩略图、音频试听、状态标签） |
 
+> ⛔ **不负责角色视觉资源**（idle/speaking 图片、主题色等，由 `roles-skill` 管理）  
 > 不负责 BGM 配置（由 `bgm-skill` 处理）  
 > 不负责效果音 SE（由 `ai-sounds` 处理）  
 > 不生成文生图 prompt（由 `produce-skill` 处理）  
@@ -44,49 +44,9 @@ description: 一站式资源提炼。从游戏源码中提取角色信息、TTS 
 - `BGM_URLS` — BGM 地址（仅用于 preview.html 展示，不写入 roles/tts/materials）
 - `GameState` 枚举 — 关联素材使用场景
 
-### 第二步：提炼角色信息 → `素材库/roles.json`
+### 第二步：提炼 TTS 语音 → `素材库/tts.json`
 
-```json
-{
-  "version": "1.0.0",
-  "source": "index.tsx",
-  "roles": [
-    {
-      "roleId": "xiao_an",
-      "name": "小安",
-      "level": 1,
-      "themeColor": "#FF6B6B",
-      "task": "帮小安串珠子",
-      "idleImage": "https://...",
-      "speakingImage": "https://..."
-    }
-  ],
-  "roleStates": {
-    "xiao_an": {
-      "runtime": ["intro", "select", "sort", "action", "complete"],
-      "interaction": ["isAudioPlaying", "isCharacterArmed", "showCharacterClap"],
-      "result": ["stars_1", "stars_2", "stars_3"]
-    }
-  },
-  "relations": [
-    {
-      "role": "xiao_an",
-      "level": 1,
-      "statusCodes": { "start": 0, "complete": 1 },
-      "keyActions": ["点击角色", "选择时间", "开始行动", "完成"]
-    }
-  ]
-}
-```
-
-**抽取规则：**
-1. 从 `CHARACTERS` 常量提取角色名、颜色、任务文案
-2. 角色与关卡一一对应：1→小安，2→小瑞，3→小布
-3. 运行状态：`intro/select/sort/action/complete`
-4. 交互状态：`isAudioPlaying/isCharacterArmed/isPaused/showCharacterClap/showTimeout`
-5. 结果状态：星级（1~3）、关卡开始/完成状态码
-
-### 第三步：提炼 TTS 语音 → `素材库/tts.json`
+> **注意：** 角色视觉资源（idle/speaking 图片、主题色）由 `roles-skill` 集中管理，本 skill 不再提炼角色信息到 `roles.json`。
 
 ```json
 {
@@ -135,7 +95,7 @@ description: 一站式资源提炼。从游戏源码中提取角色信息、TTS 
 4. **URL 映射**：优先从 `TTS_AUDIO_MAP`、`ASSET_URLS` 提取已有 URL，未生成的标记 `url: ""`
 5. 与 `ai-sounds` 效果音（SE）区分：TTS 是人声语音，SE 是非语言效果音
 
-### 第四步：提炼素材清单 → `素材库/materials.json`
+### 第三步：提炼素材清单 → `素材库/materials.json`
 
 ```json
 {
@@ -183,7 +143,7 @@ description: 一站式资源提炼。从游戏源码中提取角色信息、TTS 
 
 **注意：** materials.json 不包含文生图 prompt（由 `produce-skill` 负责）。
 
-### 第五步：生成预览页 → `素材库/preview.html`
+### 第四步：生成预览页 → `素材库/preview.html`
 
 自动生成独立 HTML 页面，浏览器直接打开即可预览：
 
@@ -206,7 +166,7 @@ description: 一站式资源提炼。从游戏源码中提取角色信息、TTS 
 - 响应式网格布局
 - 音频行含 `<audio controls>` 播放器
 
-### 第六步：打开预览
+### 第五步：打开预览
 
 ```bash
 Start-Process "素材库/preview.html"
@@ -218,15 +178,15 @@ Start-Process "素材库/preview.html"
 
 ### 全量提炼（默认）
 
-一次性输出全部文件：`roles.json` + `tts.json` + `materials.json` + `preview.html`
+一次性输出全部文件：`tts.json` + `materials.json` + `preview.html`
 
 ### 单模块提炼
 
 当用户只需要某一部分时，可以只执行对应步骤：
-- "提炼角色" → 只执行第二步，输出 `roles.json`
-- "提炼 TTS" → 只执行第三步，输出 `tts.json`
-- "提炼素材" → 只执行第四步，输出 `materials.json`
+- "提炼 TTS" → 只执行第二步，输出 `tts.json`
+- "提炼素材" → 只执行第三步，输出 `materials.json`
 - "生成预览" → 基于已有 JSON 输出 `preview.html`
+- "提炼角色" → ⚠️ 指引用户使用 `roles-skill`
 
 ---
 
@@ -235,17 +195,17 @@ Start-Process "素材库/preview.html"
 - 不丢字段，不生成虚构角色或素材
 - 中文文案保留原句（标点统一全角）
 - URL 原样保留，未生成的留空字符串
+- 不包含角色视觉资源（由 `roles-skill` 负责）
 - 不混入 BGM 配置（由 `bgm-skill` 负责）
 - 不生成文生图 prompt（由 `produce-skill` 负责）
-- 三个 JSON 文件互不重复，各自聚焦自己的领域
+- 两个 JSON 文件互不重复，各自聚焦自己的领域
 - 允许附带 `tags`、`notes`、`priority` 等扩展字段
 
 ## 与其他 Skill 的协作
 
 | 下游 Skill | 消费内容 |
 |-----------|---------|
-| produce-skill | 读取 `materials.json`、`tts.json` 进行素材生产 |
-| bgm-skill | 独立处理 BGM，与本 skill 无数据依赖 |
+| produce-skill | 读取 `materials.json`、`tts.json` 进行素材生产 || roles-skill | 管理角色视觉资源（图片/主题色），与本 skill 独立 || bgm-skill | 独立处理 BGM，与本 skill 无数据依赖 |
 | check-skill | 读取提炼结果做完整性校验 |
 
 ````
