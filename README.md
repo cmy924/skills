@@ -2,7 +2,7 @@
 
 面向 AI 编程助手的 Skill 集合，用于 React + TypeScript 小游戏/课件组件的全流程开发辅助。
 
-## 📋 Skill 列表（共 13 个）
+## 📋 Skill 列表（共14 个）
 
 | Skill | 说明 | 触发词示例 |
 |-------|------|-----------|
@@ -14,7 +14,8 @@
 | **extract-skill** | 一站式资源提炼：角色信息、TTS 语音、素材清单，统一输出 JSON 和可视化预览页 | 资源提炼、角色信息、TTS规划、素材规划 |
 | **group-skill** | Skill 分组编排器，按预定义分组批量调度执行多个 skill（初始化组、预发布组、素材工作组、道具工作组） | 项目初始化、发布前检查、素材工作流、道具工作流 |
 | **port-cleanup** | 清理 3000-3009 端口占用进程，解决 `aic dev` 启动失败和端口冲突问题 | 端口被占用、清理端口、EADDRINUSE |
-| **produce-skill** | 一站式素材生产：文生图提示词、批量素材生产线（图片+TTS）、单图快速生成 | 素材生产、批量生成、生成图片、TTS生产 |
+| **produce-skill** | 一站式素材生产：文生图提示词、批量素材生产线（图片+TTS）、单图快速生成。⚠️ type 11 仅限图生图场景 | 素材生产、批量生成、生成图片、TTS生产 |
+| **roles-skill** | 角色资源库，提供小安/小瑞/小布的 idle、speaking 图片 CDN 地址、TTS 音色、主题色等完整信息，跨项目复用 | 查询角色、角色库、用小安、引入角色 |
 | **skill-creator** | 创建新 skill、修改和优化现有 skill、运行评估测试和基准性能分析 | 创建skill、优化skill、skill评估 |
 | **themed-react-components** | 集成 ai-courseware 主题组件库，提供中古风、蒸汽朋克、猫咪风等主题 UI 组件 | 中古风、复古、蒸汽朋克、课件组件 |
 | **transparent-bg-skill** | 图片去背景透明化，支持 AI 抠图和颜色替换两种模式 | 去背景、透明底图、抠图、remove background |
@@ -30,6 +31,7 @@
 ### 设计提炼
 - `extract-skill` — 一站式资源提炼（角色 + TTS + 素材清单）
 - `bgm-skill` — BGM 库，按游戏阶段匹配背景音乐
+- `roles-skill` — 角色资源库（图片/TTS/主题色），跨项目复用
 
 ### 开发辅助
 - `ai-sounds` — 音效播放
