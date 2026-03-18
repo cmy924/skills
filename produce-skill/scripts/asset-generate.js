@@ -6,8 +6,9 @@
  *
  * Inputs: { text, type }
  * Type options:
- *   12 - pic 数组 (image array) - text 为 JSON 对象数组字符串 [{name,prompt,size},...] ✅
- *   21 - tts 数组 (tts array) - text 为 JSON 字符串数组 ["文本1","文本2"] ✅
+ *   11 - 图生图 (image-to-image) - text 为 JSON 对象数组字符串 [{name,prompt,size,url},...] ✅
+ *   12 - 文生图数组 (text-to-image array) - text 为 JSON 对象数组字符串 [{name,prompt,size},...] ✅
+ *   21 - 文生语音数组 (text-to-speech array) - text 为 JSON 对象数组 [{name,content,model,ref_audio,role_id}] ✅
  */
 
 import * as crypto from 'node:crypto'
@@ -18,12 +19,13 @@ const SDP_HEAD_FLAG = 'SDP-'
 const ASSET_APP_ID = 'e1b65227-ecf5-4b26-9bef-0f719f43e426'
 
 const TYPE_MAP = {
-	12: 'pic-数组',
-	21: 'tts-数组',
+	11: '图生图',
+	12: '文生图-数组',
+	21: '文生语音-数组',
 }
 
-const VALID_TYPES = [12, 21]
-const PIC_TYPES = [12]
+const VALID_TYPES = [11, 12, 21]
+const PIC_TYPES = [11, 12]
 const TTS_TYPES = [21]
 
 let latestTokenInfo
@@ -224,10 +226,9 @@ async function* sseEvents(response) {
 	}
 }
 
-async function runAssetWorkflow({ endpoint, apiKey, text, type, environment }) {
+async function runAssetWorkflow({ endpoint, apiKey, text, type, environment, imagePath }) {
 	const headers = {
 		Accept: 'text/event-stream',
-		'Content-Type': 'application/json',
 		'X-App-Id': ASSET_APP_ID,
 		'X-Project-Key': apiKey,
 		'Sdp-App-Id': 'b4fb92a0-af7f-49c2-b270-8f62afac1133',
@@ -241,15 +242,34 @@ async function runAssetWorkflow({ endpoint, apiKey, text, type, environment }) {
 
 	if (Authorization) headers.Authorization = Authorization
 
-	const res = await fetch(endpoint, {
-		method: 'POST',
-		headers,
-		body: JSON.stringify({
+	let body
+	if (imagePath) {
+		// type 11 (图生图): use multipart/form-data to upload image file
+		const fileBuffer = await fs.readFile(imagePath)
+		const fileName = path.basename(imagePath)
+		const blob = new Blob([fileBuffer])
+		const formData = new FormData()
+		formData.append('inputs', JSON.stringify({ text, type: String(type) }))
+		formData.append('user', '')
+		formData.append('response_mode', 'streaming')
+		formData.append('environment', environment)
+		formData.append('image', blob, fileName)
+		body = formData
+		// Do NOT set Content-Type — fetch auto-sets multipart boundary
+	} else {
+		headers['Content-Type'] = 'application/json'
+		body = JSON.stringify({
 			inputs: { text, type: String(type) },
 			user: '',
 			response_mode: 'streaming',
 			environment,
-		}),
+		})
+	}
+
+	const res = await fetch(endpoint, {
+		method: 'POST',
+		headers,
+		body,
 	})
 
 	if (!res.ok) {
@@ -355,7 +375,7 @@ async function main() {
 					'  --text, -t <text>       (required) input text / prompt',
 					'  --type <number>         (required) asset type:',
 					'                            12 = pic 数组 (image array, text=JSON对象数组[{name,prompt,size}])',
-					'                            21 = tts 数组 (tts array, text=JSON字符串数组["文本"])',
+				'                            21 = tts 数组 (tts array, text=JSON对象数组[{name,content,model,ref_audio,role_id}])',
 					'  --outFile <path>        (optional) output file path',
 					'  --outDir <path>         (optional) output directory (default: output)',
 					'  --json                  (optional) print full JSON output to stdout',
@@ -384,6 +404,19 @@ async function main() {
 			throw new Error(`Invalid --type ${typeStr}. Must be one of: ${VALID_TYPES.join(', ')}`)
 		}
 
+		// --image is optional for type 11 (图生图)
+		// If --image is provided, use multipart/form-data upload
+		// If not provided, type 11 can also use JSON body with url in text array: [{name,prompt,size,url}]
+		const imageRaw = getArgValue('--image')
+		const imagePath = imageRaw
+			? (path.isAbsolute(imageRaw) ? imageRaw : path.resolve(process.cwd(), imageRaw))
+			: undefined
+		if (imagePath) {
+			try { await fs.access(imagePath) } catch {
+				throw new Error(`Image file not found: ${imagePath}`)
+			}
+		}
+
 		const jsonOutput = hasFlag('--json')
 		const urlOnly = hasFlag('--url-only')
 		const outFileRaw = getArgValue('--outFile') || getArgValue('--output')
@@ -395,7 +428,7 @@ async function main() {
 		const typeLabel = TYPE_MAP[type] || `type${type}`
 		const base = `${nowStamp()}_${typeLabel}_${safeFileBaseName(text)}`
 
-		console.error(`[asset-generate] type=${type} (${typeLabel}), text="${text.slice(0, 80)}..."`)
+		console.error(`[asset-generate] type=${type} (${typeLabel}), text="${text.slice(0, 80)}..."${imagePath ? `, image=${imagePath}` : ''}`)
 		console.error(`[asset-generate] Calling workflow...`)
 
 		const outputs = await runAssetWorkflow({
@@ -404,6 +437,7 @@ async function main() {
 			text,
 			type,
 			environment,
+			imagePath,
 		})
 
 		if (jsonOutput) {
@@ -498,7 +532,10 @@ async function main() {
 		if (allUrls.length > 0) {
 			for (let i = 0; i < allUrls.length; i++) {
 				const { url, tag } = allUrls[i]
-				const fileBase = allUrls.length === 1 ? base : `${base}_${tag}`
+				// FIX: Use just the tag as filename when it looks like a meaningful name
+				// (e.g., "xiao_an_idle" from outputs.output[].name), avoid prepending the long base
+				const hasNamedTag = /^[a-zA-Z0-9_-]+$/.test(tag) && tag.length > 2
+				const fileBase = hasNamedTag ? tag : (allUrls.length === 1 ? base : `${base}_${tag}`)
 
 				let savedPath
 				if (outFile && allUrls.length === 1) {

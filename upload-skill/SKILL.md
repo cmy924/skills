@@ -17,7 +17,7 @@ description: 将本地图片/音频文件上传到 CS (Content Service)，获取
 
 ## 前置条件
 
-必需环境变量（与 asset-generate 共享）：
+必需环境变量（与 produce-skill 共享）：
 - `BTS_NAME`: BTS 应用名称
 - `BTS_SECRET`: BTS 应用密钥
 
@@ -89,11 +89,11 @@ bun run <skill-directory>/scripts/upload.js ./素材库/download/ --update-urls 
 bun run <skill-directory>/scripts/upload.js ./bgm/main.mp3 --mode static --remote-path game/main_bgm.mp3
 ```
 
-### 3. 配合 asset-generate 使用
+### 3. 配合 produce-skill 使用
 
 ```bash
-# 1. asset-generate 生成素材并下载到本地
-bun run <asset-generate-skill>/scripts/asset-pipeline.js -i ./素材库/assets.json -o ./asset-urls.ts --download-dir ./素材库/download
+# 1. produce-skill 生成素材并下载到本地
+bun run <produce-skill>/scripts/asset-pipeline.js -i ./素材库/assets.json -o ./asset-urls.ts --download-dir ./素材库/download
 
 # 2. 手动调整本地素材（如 PS 修图）
 

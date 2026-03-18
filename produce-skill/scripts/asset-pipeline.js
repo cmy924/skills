@@ -11,9 +11,9 @@
  *
  * assets.json 格式:
  *   type 12 (图片): [{ "name": "勺子", "prompt": "A cute cartoon spoon...", "size": "512x512" }]
- *   type 21 (TTS):  [{ "name": "欢迎词", "prompt": "你好", "type": 21 }]
+ *   type 21 (TTS):  [{ "name": "L1_S1_01", "content": "你好", "model": 10139, "ref_audio": 10311, "role_id": "xx", "type": 21 }]
  *   type 12 的 API text 参数为 JSON 对象数组 [{name,prompt,size}]
- *   type 21 的 API text 参数为 JSON 字符串数组 ["文本1","文本2"]
+ *   type 21 的 API text 参数为 JSON 对象数组 [{name,content,model,ref_audio,role_id}]
  *   Pipeline 自动按类型分组批量调用
  *
  * 输出:
@@ -140,7 +140,7 @@ async function main() {
 
 	// ==================== 分组批量处理 ====================
 	// type 12 (图片): text 为 JSON 对象数组 [{name, prompt, size}, ...]
-	// type 21 (TTS):  text 为 JSON 字符串数组 ["文本1", "文本2"]
+	// type 21 (TTS):  text 为 JSON 对象数组 [{name,content,model,ref_audio,role_id}]
 	// Pipeline 将同类型素材归组，一次性批量调用 API
 
 	const urlMap = { ...existingUrls }
@@ -178,7 +178,7 @@ async function main() {
 
 		if (pending.length === 0) continue
 
-		// 构建 text 参数：type 12 为对象数组，type 21 为字符串数组
+		// 构建 text 参数：type 12 为对象数组 [{name,prompt,size}]，type 21 为对象数组 [{name,content,model,ref_audio,role_id}]
 		let textJson
 		if (assetType === '12') {
 			// type 12: [{name, prompt, size}, ...]
@@ -189,9 +189,15 @@ async function main() {
 			}))
 			textJson = JSON.stringify(objArray)
 		} else {
-			// type 21: ["文本1", "文本2"]
-			const textArray = pending.map(a => a.prompt)
-			textJson = JSON.stringify(textArray)
+			// type 21: [{name, content, model, ref_audio, role_id}, ...]
+			const objArray = pending.map(a => ({
+				name: a.name,
+				content: a.content || a.prompt,
+				model: a.model,
+				ref_audio: a.ref_audio,
+				role_id: a.role_id,
+			}))
+			textJson = JSON.stringify(objArray)
 		}
 
 		const typeLabel = assetType === '21' ? '🔊 TTS' : '🎨 图片'
