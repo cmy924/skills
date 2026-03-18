@@ -1,0 +1,124 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2026-03-18",
+  "description": "角色资源库 — 集中管理所有可复用角色的图片、TTS音色、主题色等信息",
+  "characters": [
+    {
+      "id": "xiao_an",
+      "name": "小安",
+      "gender": "male",
+      "themeColor": "#ff6b6b",
+      "description": "暖红色系男孩角色，适合引导类、手工类关卡",
+      "images": {
+        "idle": {
+          "url": "https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=c71763e8-0bf1-4d63-bf9c-b06e707ec9b6",
+          "dentryId": "c71763e8-0bf1-4d63-bf9c-b06e707ec9b6",
+          "format": "png",
+          "transparentBg": true,
+          "status": "deployed"
+        },
+        "speaking": {
+          "url": "https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=e29896a1-3079-42bf-bc1a-8ff7c8e37f48",
+          "dentryId": "e29896a1-3079-42bf-bc1a-8ff7c8e37f48",
+          "format": "png",
+          "transparentBg": true,
+          "status": "deployed"
+        }
+      },
+      "tts": {
+        "model": 10139,
+        "ref_audio": 10311,
+        "voiceDescription": "男孩童声，活泼阳光"
+      },
+      "sourceProject": "E7s6BSDiq3Bn80WDZQ3Da5_3",
+      "usedInLevels": [1],
+      "status": "active"
+    },
+    {
+      "id": "xiao_rui",
+      "name": "小瑞",
+      "gender": "female",
+      "themeColor": "#4ecdc4",
+      "description": "薄荷绿系女孩角色，适合逻辑类、连线类关卡",
+      "images": {
+        "idle": {
+          "url": "https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=5ffa0c1a-d60c-4d19-99ed-26312b6081e9",
+          "dentryId": "5ffa0c1a-d60c-4d19-99ed-26312b6081e9",
+          "format": "png",
+          "transparentBg": true,
+          "status": "deployed"
+        },
+        "speaking": {
+          "url": "https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=78d7aab5-8996-48e6-8474-651e00f448ba",
+          "dentryId": "78d7aab5-8996-48e6-8474-651e00f448ba",
+          "format": "png",
+          "transparentBg": true,
+          "status": "deployed"
+        }
+      },
+      "tts": {
+        "model": 10138,
+        "ref_audio": 10310,
+        "voiceDescription": "女孩童声，温柔可爱"
+      },
+      "sourceProject": "E7s6BSDiq3Bn80WDZQ3Da5_3",
+      "usedInLevels": [2],
+      "status": "active"
+    },
+    {
+      "id": "xiao_bu",
+      "name": "小布",
+      "gender": "male",
+      "themeColor": "#ffa502",
+      "description": "橙黄色系男孩角色，适合拼图类、动手类关卡",
+      "images": {
+        "idle": {
+          "url": "https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=d3c591b2-06c9-42eb-a8e1-9295a32a519e",
+          "dentryId": "d3c591b2-06c9-42eb-a8e1-9295a32a519e",
+          "format": "png",
+          "transparentBg": true,
+          "status": "deployed"
+        },
+        "speaking": {
+          "url": "https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=ac447a85-ea0a-4e65-8b77-53cc1676c6ae",
+          "dentryId": "ac447a85-ea0a-4e65-8b77-53cc1676c6ae",
+          "format": "png",
+          "transparentBg": true,
+          "status": "deployed"
+        }
+      },
+      "tts": {
+        "model": 10141,
+        "ref_audio": 10313,
+        "voiceDescription": "男孩童声，憨厚可爱"
+      },
+      "sourceProject": "E7s6BSDiq3Bn80WDZQ3Da5_3",
+      "usedInLevels": [3],
+      "status": "active"
+    },
+    {
+      "id": "narrator",
+      "name": "旁白",
+      "gender": null,
+      "themeColor": null,
+      "description": "旁白角色，非可视，仅提供语音引导",
+      "images": null,
+      "tts": {
+        "model": 10112,
+        "ref_audio": 10284,
+        "voiceDescription": "成熟女声旁白，温和引导"
+      },
+      "sourceProject": "E7s6BSDiq3Bn80WDZQ3Da5_3",
+      "usedInLevels": [1, 2, 3],
+      "status": "active"
+    }
+  ],
+  "displayStandard": {
+    "canvasRatio": "4:3",
+    "recommendedSize": "2304x1728",
+    "subjectHeightRatio": "85%-95%",
+    "bottomAlignment": "角色脚部紧贴画布底边，偏移≤3%",
+    "idleSpeakingConsistency": "同角色两态尺寸差异≤5%",
+    "format": "PNG with transparent background"
+  }
+}
