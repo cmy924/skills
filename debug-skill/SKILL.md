@@ -37,7 +37,7 @@ const [isDevMode] = useState<boolean>(() => {
   }
 })
 const [devPanelOpen, setDevPanelOpen] = useState<boolean>(true)
-const [devPos, setDevPos] = useState({ x: 8, y: 8 })
+const [devPos, setDevPos] = useState({ x: 8, y: 8 })  // x = right offset
 const [devSize, setDevSize] = useState({ w: 420, h: 0 }) // h=0 表示高度 auto
 const devDragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
 const devResizeRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null)
@@ -53,7 +53,7 @@ const onDevDragStart = (e: React.MouseEvent) => {
   const onMove = (ev: MouseEvent) => {
     if (!devDragRef.current) return
     setDevPos({
-      x: Math.max(0, devDragRef.current.origX + ev.clientX - devDragRef.current.startX),
+      x: Math.max(0, devDragRef.current.origX - (ev.clientX - devDragRef.current.startX)),  // inverted for right-positioned panel
       y: Math.max(0, devDragRef.current.origY + ev.clientY - devDragRef.current.startY)
     })
   }
@@ -139,7 +139,7 @@ const devJump = (level: LevelId, step: Step) => {
       ref={devPanelRef}
       className={styles.devPanel}
       style={{
-        left: devPos.x,
+        right: devPos.x,
         top: devPos.y,
         width: devPanelOpen ? devSize.w : undefined,
         height: devPanelOpen && devSize.h ? devSize.h : undefined,
