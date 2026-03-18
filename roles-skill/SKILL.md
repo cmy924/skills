@@ -65,7 +65,7 @@ description: 角色资源库。提供小安、小瑞、小布三个角色的 idl
 | 状态 | URL | 格式 | 备注 |
 |------|-----|------|------|
 | idle | `https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=d3c591b2-06c9-42eb-a8e1-9295a32a519e` | PNG（透明背景） | 已上传 CDN |
-| speaking | `https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=ac447a85-ea0a-4e65-8b77-53cc1676c6ae` | PNG（透明背景） | 已上传 CDN |
+| speaking | `https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=04ed3618-378c-474f-a3e8-c2d1dec7ff1b` | PNG（透明背景） | 已上传 CDN |
 
 ---
 
@@ -108,7 +108,7 @@ const CHARACTERS = {
     id: 'xiao_bu',
     name: '小布',
     idle: 'https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=d3c591b2-06c9-42eb-a8e1-9295a32a519e',
-    speaking: 'https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=ac447a85-ea0a-4e65-8b77-53cc1676c6ae'
+    speaking: 'https://gcdncs.101.com/v0.1/download?attachment=true&dentryId=04ed3618-378c-474f-a3e8-c2d1dec7ff1b'
   }
 }
 ```
