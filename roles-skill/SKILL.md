@@ -7,6 +7,13 @@ description: 角色资源库。管理角色视觉资源（idle/speaking 图片 C
 
 集中管理小安、小瑞、小布三个角色的**视觉资源**和**TTS 音色配置**，供跨项目复用。
 
+## ⚠️ 防覆盖规则
+
+执行前检查 `index.tsx` 中是否存在 `@custom-characters` 标记。
+
+- 如果找到 `@custom-characters` → **跳过 CHARACTERS 配置块的写入**，表示项目已有完整的角色配置，不需要重新生成
+- 如果未找到 → 按下方角色资源正常写入 CHARACTERS 块
+
 ## 角色总览
 
 | 角色 ID | 名称 | 主题色 | idle 状态 | speaking 状态 |
