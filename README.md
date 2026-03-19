@@ -2,10 +2,11 @@
 
 面向 AI 编程助手的 Skill 集合，用于 React + TypeScript 小游戏/课件组件的全流程开发辅助。
 
-## 📋 Skill 列表（共15 个）
+## 📋 Skill 列表（共16 个）
 
 | Skill | 说明 | 触发词示例 |
 |-------|------|-----------|
+| **agent-creator** | 基于项目源码生成 `.github/agents/game-dev.md`（Copilot 自定义 Agent），通过 `@game-dev` 调用 | 生成 agent、创建 agent、agent prompt |
 | **ai-sounds** | 音效资源库，仅负责游戏内音效（SE）播放。支持反馈音、错误提示音、进度音、确认音等 | 播放音效、音效反馈、play sound |
 | **bgm-skill** | BGM 库，获取匹配的背景音乐，按游戏阶段播放不同 BGM（主流程/行动进行中/暂停休息） | BGM规划、背景音乐、播放策略 |
 | **check-skill** | 根据游戏设计文档对代码进行全面自动化验证，逐条检查规则、状态机、计时器、类型安全等 | 验证项目、check、走查、自检 |
@@ -46,6 +47,7 @@
 - `copilot-instructions-skill` — 协作指南生成
 
 ### 工程化
+- `agent-creator` — 生成 Copilot 自定义 Agent（`.github/agents/game-dev.md`）
 - `group-skill` — Skill 分组编排
 - `skill-creator` — Skill 创建与优化
 
@@ -58,11 +60,13 @@
 
 | 顺序 | Skill | 职责 |
 |------|-------|------|
-| 1 | `copilot-instructions-skill` | 生成协作指南 |
-| 2 | `debug-skill` | 添加调试面板 |
-| 3 | `ai-sounds` | 添加交互音效 |
-| 4 | `bgm-skill` | 添加背景音乐 |
-| 5 | `check-skill` | 规则验证 |
+| 1 | `roles-skill` | 查询角色资源库 |
+| 2 | `copilot-instructions-skill` | 生成协作指南 |
+| 3 | `debug-skill` | 添加调试面板 |
+| 4 | `ai-sounds` | 添加交互音效 |
+| 5 | `bgm-skill` | 添加背景音乐 |
+| 6 | `check-skill` | 规则验证 |
+| 7 | `agent-creator` | 生成开发 Agent |
 
 ### 预发布组（pre-release）
 > 触发词：发布前检查、预发布、pre-release
