@@ -15,7 +15,7 @@
 | **extract-skill** | 资源提炼（TTS + 素材），生成 JSON 数据和带左侧导航栏 + 生产线仪表盘的预览页 | 资源提炼、TTS规划、素材清单 |
 | **group-skill** | Skill 分组编排器，按预定义分组批量调度执行多个 skill | 项目初始化、发布前检查、素材工作流 |
 | **port-cleanup** | 清理 3000-3009 端口占用进程，解决 `aic dev` 启动失败和端口冲突问题 | 端口被占用、清理端口、EADDRINUSE |
-| **preview-skill** | 素材预览与生产控制面板，左侧导航栏 + 环形进度仪表盘 + 分类一键生产 | 素材预览、打开预览、preview、生产面板 |
+| **preview-skill** | AI素材工坊技能（原素材预览），左侧导航栏 + 环形进度仪表盘 + 分类一键生产 | AI素材工坊、打开AI素材工坊、preview、生产面板 |
 | **produce-skill** | 一站式素材生产：文生图提示词、批量素材生产线（图片+TTS）、单图快速生成。⚠️ type 11 仅限图生图场景 | 素材生产、批量生成、生成图片、TTS生产 |
 | **roles-skill** | 角色资源库，仅负责角色视觉资源（idle/speaking 图片、主题色），不含 TTS | 查询角色、角色库、用小安、引入角色 |
 | **skill-creator** | 创建新 skill、修改和优化现有 skill、运行评估测试和基准性能分析 | 创建skill、优化skill、skill评估 |
@@ -27,7 +27,7 @@
 
 ### 素材生产
 - `produce-skill` — 一站式素材生产（提示词 + 图片 + TTS）
-- `preview-skill` — 素材预览与生产控制面板（环形进度 + 分类生产）
+- `preview-skill` — AI素材工坊技能（环形进度 + 分类生产）
 - `transparent-bg-skill` — 图片去背景透明化
 - `upload-skill` — 本地文件上传到 CS / CDN
 
@@ -82,7 +82,7 @@
 | 顺序 | Skill | 职责 |
 |------|-------|------|
 | 1 | `extract-skill` | 提炼资源（TTS + 素材） |
-| 2 | `preview-skill` | 打开预览页，查看生产线仪表盘 |
+| 2 | `preview-skill` | 打开AI素材工坊页，查看生产线仪表盘 |
 | 3 | `produce-skill` | 按分类生产素材（场景/道具/TTS） |
 | 4 | `check-skill` | 规则验证 |
 
