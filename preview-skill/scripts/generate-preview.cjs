@@ -183,16 +183,29 @@ function buildPropGroups() {
     });
   }
 
-  // UI from artChecklist
-  const uiItems = materials.artChecklist?.uiFromManifest?.items || [];
-  if (uiItems.length) {
+  // uiProps（计时魔法等项目使用 materialProfile.uiProps）
+  const uiProps = profile.uiProps || [];
+  if (uiProps.length) {
     groups.push({
       key: 'ui',
       label: 'UI 元素',
       icon: '🎨',
       gridId: 'uiGrid',
       sectionId: 'sec-ui',
-      items: uiItems.map(i => buildPropItem(i)),
+      items: uiProps.map(i => buildPropItem(i)),
+    });
+  }
+
+  // UI from artChecklist（金色渔夫等项目使用 artChecklist.uiFromManifest）
+  const uiFromManifest = materials.artChecklist?.uiFromManifest?.items || [];
+  if (uiFromManifest.length && !uiProps.length) {
+    groups.push({
+      key: 'ui',
+      label: 'UI 元素',
+      icon: '🎨',
+      gridId: 'uiGrid',
+      sectionId: 'sec-ui',
+      items: uiFromManifest.map(i => buildPropItem(i)),
     });
   }
 
@@ -219,7 +232,7 @@ function buildPropItem(p) {
     priority: p.priority || 'P1',
     url: (p.status === 'produced' || p.status === 'deployed') && p.remoteUrl ? p.remoteUrl : null,
     prompt: p.prompt || findPromptFromAssets(p.name) || '',
-    icon: guessPropIcon(p.name, p.category),
+    icon: p.emoji || guessPropIcon(p.name, p.category),
   };
 }
 
@@ -228,6 +241,9 @@ const GROUP_LABEL_DICT = [
   [/fish|鱼/, '鱼类道具', '🐟'],
   [/tool|工具/, '工具道具', '🧰'],
   [/obstacle|障碍|干扰/, '障碍物', '🚧'],
+  [/desk|桌面/, '桌面物品', '🪑'],
+  [/story|故事|卡片/, '故事卡片', '📖'],
+  [/robot|机器人/, '机器人', '🤖'],
   [/bead|珠/, '珠子道具', '📿'],
   [/card|卡/, '卡牌道具', '🃏'],
   [/chess|棋/, '棋子道具', '♟️'],
@@ -239,17 +255,31 @@ const GROUP_LABEL_DICT = [
   [/weapon|武器/, '武器道具', '⚔️'],
 ];
 
+// 从 key 中提取关卡前缀，如 "level1_desk" → "关卡1·"
+function extractLevelPrefix(key) {
+  const m = key.match(/^level(\d+)[_-]/);
+  if (m) return '关卡' + m[1] + '·';
+  const m2 = key.match(/^l(\d+)[_-]/i);
+  if (m2) return '关卡' + m2[1] + '·';
+  return '';
+}
+
 function guessGroupLabel(key, items) {
+  const prefix = extractLevelPrefix(key);
+  // 去掉关卡前缀后再匹配
+  const cleanKey = key.replace(/^level\d+[_-]/i, '').replace(/^l\d+[_-]/i, '');
   for (const [pattern, label] of GROUP_LABEL_DICT) {
-    if (pattern.test(key)) return label;
+    if (pattern.test(cleanKey) || pattern.test(key)) return prefix + label;
   }
   // fallback: 将 key 转为可读标签
-  return key.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const fallback = cleanKey.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  return prefix + fallback;
 }
 
 function guessGroupIcon(key) {
+  const cleanKey = key.replace(/^level\d+[_-]/i, '').replace(/^l\d+[_-]/i, '');
   for (const [pattern, , icon] of GROUP_LABEL_DICT) {
-    if (pattern.test(key)) return icon;
+    if (pattern.test(cleanKey) || pattern.test(key)) return icon;
   }
   return '🎭';
 }
@@ -453,6 +483,20 @@ function buildTTS() {
     }
   }
 
+  // uiTTS（计时魔法等项目有 UI 音效 TTS）
+  for (const t of (ttsData.uiTTS || [])) {
+    const cfg = ttsConfig[t.id] || {};
+    tts.push({
+      role: 'ui',
+      name: t.id,
+      stage: t.scene || '',
+      model: cfg.model || null,
+      ref_audio: cfg.ref_audio || null,
+      content: t.text,
+      url: t.url || '',
+    });
+  }
+
   return tts;
 }
 
@@ -606,9 +650,17 @@ function generate() {
   const sectionsHTML = buildSectionsHTML(propGroups);
 
   // 角色名映射
-  const roleNames = { narrator: '旁白' };
+  const roleNames = { narrator: '旁白', ui: 'UI音效' };
   for (const c of characters) {
     roleNames[c.id] = c.name;
+  }
+  // 从 roleTTS 补充角色名（role 字段直接是中文名如 "小安"）
+  if (ttsData && ttsData.roleTTS) {
+    for (const rg of ttsData.roleTTS) {
+      if (rg.role && !roleNames[rg.role]) {
+        roleNames[rg.role] = rg.role;
+      }
+    }
   }
 
   // 旁白语音配置（从 TTS 数据驱动提取，fallback 到 roles-skill）

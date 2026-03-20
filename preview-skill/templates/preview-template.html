@@ -823,8 +823,10 @@
   }
   .tts-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
   .tts-table tr:hover { background: rgba(255,255,255,0.03); }
-  .role-tag { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; font-weight: 600; color: #000; }
+  .role-tag { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; font-weight: 600; color: #fff; }
   .role-tag.narrator { background: var(--muted); }
+  .role-tag.ui { background: var(--orange); color: #000; }
+  .role-tag:not(.narrator):not(.ui) { background: var(--green); }
   .model-tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #2a2a4a; color: #a78bfa; font-family: Consolas, monospace; }
   .ref-tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #2a2a4a; color: var(--green); font-family: Consolas, monospace; }
   .tts-status { font-size: 11px; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
