@@ -461,7 +461,11 @@ function buildTTS() {
 
   // narratorTTS — fallback 到 roles-skill 的 narrator 配置
   const narratorFallback = rolesVoice['narrator'] || rolesVoice['旁白'] || {};
-  for (const t of (ttsData.narratorTTS || [])) {
+  // FIX: narratorTTS 可能是对象（含 lines 数组）或数组，统一处理
+  const narratorLines = Array.isArray(ttsData.narratorTTS)
+    ? ttsData.narratorTTS
+    : (ttsData.narratorTTS && Array.isArray(ttsData.narratorTTS.lines) ? ttsData.narratorTTS.lines : []);
+  for (const t of narratorLines) {
     const cfg = ttsConfig[t.id] || {};
     tts.push({
       role: 'narrator',
@@ -492,7 +496,11 @@ function buildTTS() {
   }
 
   // uiTTS — 无角色音色 fallback
-  for (const t of (ttsData.uiTTS || [])) {
+  // FIX: uiTTS 可能是对象（含 lines 数组）或数组，统一处理
+  const uiLines = Array.isArray(ttsData.uiTTS)
+    ? ttsData.uiTTS
+    : (ttsData.uiTTS && Array.isArray(ttsData.uiTTS.lines) ? ttsData.uiTTS.lines : []);
+  for (const t of uiLines) {
     const cfg = ttsConfig[t.id] || {};
     tts.push({
       role: 'ui',
