@@ -269,21 +269,15 @@ bun --env-file=<project-root>/.claude/.env run <skill-directory>/scripts/asset-g
 
 ---
 
-## ⚠️ 核心规则：生产后必须同步更新 preview.html
+## ⚠️ 核心规则：生产后必须同步更新预览页
 
 **每次调用 API 生产素材（无论单条还是批量），只要有新的 CDN URL 返回，必须立即执行以下同步操作：**
 
-1. **更新 `素材库/preview.html`**：将对应素材的 `url:null` 替换为实际 CDN URL
-   - TTS 素材：匹配 `name` 字段（如 `L1_S1_01`），更新对应行的 `url` 值
-   - 图片素材：匹配素材名称，更新对应行的 `url` 值
-2. **更新 `素材库/produced-urls.json`**：将新 URL 写入对应分类（`tts` 或 `images`）
-
-**示例**：生产 TTS 返回 `{name:"L1_S1_01", url:"https://...wav"}` 后：
-```javascript
-// preview.html 中：
-// 修改前: { role:'narrator', name:'L1_S1_01', ..., url:null },
-// 修改后: { role:'narrator', name:'L1_S1_01', ..., url:'https://...wav' },
-```
+1. **更新数据源文件**：将对应素材的 URL 写入数据文件
+   - TTS 素材：更新 `素材库/tts.json` 中对应条目的 `url` 字段
+   - 图片素材：更新 `素材库/materials.json` 中对应条目的 `remoteUrl` 字段
+2. **重新生成预览页**：运行 `node .claude/skills/preview-skill/scripts/generate-preview.cjs` 重新生成 `素材库/preview.html`
+3. **更新 `素材库/produced-urls.json`**：将新 URL 写入对应分类（`tts` 或 `images`）
 
 > 这确保预览页面始终反映最新的素材生产状态，用户可以随时试听/查看已生产的素材。
 
@@ -297,7 +291,7 @@ bun --env-file=<project-root>/.claude/.env run <skill-directory>/scripts/asset-g
 2. 本 skill 的提示词能力 → 为 `materials.json` 中每个素材生成 prompt
 3. 组装 `assets.json`（图片 + TTS 混合）
 4. Pipeline 批量生产 → 输出 `asset-urls.ts`
-5. **同步更新 `素材库/preview.html` 和 `素材库/produced-urls.json`**
+5. **同步更新数据源文件 + 重新运行 `preview-skill` 生成预览页 + 更新 `produced-urls.json`**
 6. 游戏代码 `import { ASSET_URLS } from './asset-urls'` 使用
 
 ---
@@ -310,6 +304,7 @@ bun --env-file=<project-root>/.claude/.env run <skill-directory>/scripts/asset-g
 
 | 下游 Skill | 消费内容 |
 |-----------|---------|
+| preview-skill | 生产完成后重新运行生成器，刷新预览页素材状态 |
 | 游戏代码 | 通过 `asset-urls.ts` 使用 CDN URL |
 | check-skill | 验证素材引用完整性 |
 
