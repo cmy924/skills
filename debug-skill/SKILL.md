@@ -1,215 +1,279 @@
 ---
 name: debug-skill
-description: 为 React 小游戏/课件组件添加开发调试面板（debug 模式）。通过 URL 参数 dev=1 激活，支持关卡跳转、步骤跳转、背景音乐控制、音效测试、AI素材工坊链接、状态监控，面板可拖拽移动、可缩放且内容等比放大。所有标签和按钮使用中文。触发词：debug模式、调试面板、dev模式、开发模式、debug panel、调试工具、跳关、跳步骤。
+description: 为 React 小游戏/课件组件添加通用开发调试面板（debug 模式）。通过 URL 参数 dev=1 激活，内置拖拽移动、缩放、BGM 控制、音效测试、AI素材工坊（本地预览/上传/打开），游戏专属区块（关卡/步骤/状态）通过 sections 配置传入。所有标签使用中文。触发词：debug模式、调试面板、dev模式、开发模式、debug panel、调试工具、跳关、跳步骤。
 ---
 
-# Debug Skill — 开发调试面板
+# Debug Skill — 通用开发调试面板
 
-为 React 游戏/课件组件添加一个悬浮调试面板，支持选择关卡和步骤、查看实时状态、可拖拽可缩放。
+为任意 React 游戏/课件组件添加悬浮调试面板。面板分两层：**通用内置**（拖拽/缩放/BGM/音效/素材工坊）和**游戏专属**（通过 `sections` prop 配置传入）。
+
+## 架构设计
+
+```
+.claude/skills/debug-skill/
+├── SKILL.md                          ← 技能说明（你正在看的）
+└── templates/
+    ├── DevPanel.tsx                   ← 通用组件模板（复制到项目根目录）
+    └── DevPanel.module.css            ← 通用样式模板（复制到项目根目录）
+
+项目根目录/
+├── DevPanel.tsx                       ← 从 templates/ 复制，不改
+├── DevPanel.module.css                ← 从 templates/ 复制，不改
+└── index.tsx                          ← 游戏主组件，传入 sections 配置游戏专属区块
+```
+
+**核心原则**：
+- `templates/` 下的两个文件是**唯一真实源**，SKILL.md 中的代码块仅供参考
+- 执行 skill 时用 `read_file` 读取模板 → `create_file` 写入项目根目录
+- 跨项目零修改复用，所有游戏差异通过 `sections` prop 注入
 
 ## ⚠️ 防覆盖规则
 
 **执行前必须检查** `index.tsx` 中是否存在 `@custom-dev-panel` 标记注释。
 
-- 如果找到 `@custom-dev-panel` → **跳过 Dev 面板 JSX 的替换**，只补充缺失的 state/ref/handler（如 devPos、devSize、拖拽事件等）
+- 如果找到 `@custom-dev-panel` → **跳过面板生成**，只检查 DevPanel.tsx 和 DevPanel.module.css 是否存在
 - 如果未找到 → 按下方模板正常生成
-
-这个标记表示开发者已手工定制了 Dev 面板，模板不应覆盖。
-
-## 适用场景
-
-- 多关卡多步骤的游戏组件开发调试
-- 课件交互组件开发时需要快速跳转到某个状态
-- 需要在不重新加载页面的情况下切换游戏进度
 
 ## 激活方式
 
-以下任一条件满足即激活，生产环境不会显示：
+以下任一条件满足即激活，生产环境不显示：
 
 1. URL 参数 `?dev=1`
-2. URL 路径匹配 `**/dev/**`（即路径中包含 `/dev/`）
-3. URL 路径匹配 `**/preview/**`（即路径中包含 `/preview/`）
+2. URL 路径匹配 `**/dev/**`
+3. URL 路径匹配 `**/preview/**`
 
-## 面板布局
+## 第一步：复制 DevPanel.tsx
+
+从模板目录读取并复制到项目根目录，**无需任何修改**：
 
 ```
-┌─────────────────────────────┐
-│ 🛠 DEV ▼                ⠿  │  ← 可拖拽标题栏
-├─────────────────────────────┤
-│ 关卡                         │
-│ [L1 小溪初钓] [L2 激流] [L3] │  ← 点击切换关卡
-│ 步骤                         │
-│ [引入] [倒计时] [游戏中] [结算]│  ← 点击切换步骤
-│ 状态                         │
-│ 关卡: L1 | 步骤: intro       │
-│ 背景音乐: 主流程              │
-│ 背景音乐                     │
-│ [主流程] [行动中] [暂停] [停止]│  ← BGM 中文按钮
-│ 音效测试                      │
-│ [通关] [错误] [答题1]         │  ← 音效中文按钮
-│ [答题2] [点击] [确认]         │
-│ AI素材工坊                    │
-│ 🏭 打开AI素材工坊             │  ← 打开 CDN 工坊页
-│                           ◢ │  ← 缩放手柄
-└─────────────────────────────┘
+源文件：.claude/skills/debug-skill/templates/DevPanel.tsx
+目标：项目根目录/DevPanel.tsx
 ```
 
-## 中文标签规范
+使用 `read_file` 读取模板文件完整内容，然后用 `create_file` 写入项目根目录。
 
-面板中所有标签和按钮**必须使用中文**，方便非英文开发者快速理解。
+> 如果项目根目录已存在 DevPanel.tsx，**跳过此步**，不要覆盖。
 
-| 区块 | 标签名 | 按钮文字 |
-|------|--------|---------|
-| 关卡选择 | `关卡` | 项目自定义（如 `L1 小溪初钓`） |
-| 步骤选择 | `步骤` | 项目自定义（如 `引入` / `倒计时` / `游戏中` / `结算`） |
-| 状态监控 | `状态` | 显示 `关卡: L1 | 步骤: intro` + `背景音乐: 主流程` |
-| BGM 控制 | `背景音乐` | `主流程` / `行动中` / `暂停` / `停止` |
-| 音效测试 | `音效测试` | `通关` / `错误` / `答题1` / `答题2` / `点击` / `确认` |
-| AI素材工坊 | `AI素材工坊` | `🏭 打开AI素材工坊`（链接到 CDN） |
-
-## 实现规范
-
-### 1. 关卡 & 步骤定义
-
-在组件顶层（export 之前）定义关卡和步骤常量，根据项目实际情况调整：
+<details>
+<summary>DevPanel.tsx 源码参考（点击展开，实际执行时从模板文件读取）</summary>
 
 ```tsx
-// ─── 关卡 & 步骤定义（根据项目调整） ───
-const LEVELS = [
-  { id: 'L1' as const, label: 'L1 小溪初钓' },
-  { id: 'L2' as const, label: 'L2 激流挑战' },
-  { id: 'L3' as const, label: 'L3 瀑布捕鱼' }
-] as const
+import { useState, useRef, useCallback, type ReactNode } from 'react'
+import soundLibrary from 'ai-sounds'
+import styles from './DevPanel.module.css'
 
-const STEPS = [
-  { id: 'intro' as const, label: '引入' },
-  { id: 'countdown' as const, label: '倒计时' },
-  { id: 'gameplay' as const, label: '游戏中' },
-  { id: 'result' as const, label: '结算' }
-] as const
+// ─── 通用配置类型 ───
+type BgmKey = 'main' | 'progress' | 'rest'
 
-type LevelId = typeof LEVELS[number]['id']
-type StepId = typeof STEPS[number]['id']
-```
-
-### 2. 状态声明
-
-在组件内增加以下 state 和 ref：
-
-```tsx
-// ─── 关卡 & 步骤状态 ───
-const [currentLevel, setCurrentLevel] = useState<LevelId>('L1')
-const [currentStep, setCurrentStep] = useState<StepId>('intro')
-
-// ─── Dev模式检测：URL 参数 ?dev=1 或路径包含 /dev/ ───
-const [isDevMode] = useState<boolean>(() => {
-  try {
-    const url = new URL(window.location.href)
-    return url.searchParams.get('dev') === '1' || /\/(dev|preview)\//.test(url.pathname)
-  } catch {
-    return false
-  }
-})
-const [devPanelOpen, setDevPanelOpen] = useState<boolean>(true)
-const [devPos, setDevPos] = useState({ x: 8, y: 8 })  // x = right offset，默认更贴右侧
-const [devSize, setDevSize] = useState({ w: 580, h: 0 }) // h=0 表示高度 auto，默认宽度按当前项目调试习惯设置
-const devDragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
-const devResizeRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null)
-const devPanelRef = useRef<HTMLDivElement>(null)
-```
-
-### 3. 拖拽移动逻辑
-
-```tsx
-const onDevDragStart = (e: React.MouseEvent) => {
-  e.preventDefault()
-  devDragRef.current = { startX: e.clientX, startY: e.clientY, origX: devPos.x, origY: devPos.y }
-  const onMove = (ev: MouseEvent) => {
-    if (!devDragRef.current) return
-    setDevPos({
-      x: Math.max(0, devDragRef.current.origX - (ev.clientX - devDragRef.current.startX)),  // inverted for right-positioned panel
-      y: Math.max(0, devDragRef.current.origY + ev.clientY - devDragRef.current.startY)
-    })
-  }
-  const onUp = () => {
-    devDragRef.current = null
-    window.removeEventListener('mousemove', onMove)
-    window.removeEventListener('mouseup', onUp)
-  }
-  window.addEventListener('mousemove', onMove)
-  window.addEventListener('mouseup', onUp)
+/** 按钮组区块：显示一组可点击按钮 */
+export interface DevButtonSection {
+  type: 'buttons'
+  label: string
+  buttons: { label: string; active?: boolean; action: () => void }[]
 }
-```
 
-### 4. 缩放逻辑（内容等比放大）
-
-```tsx
-const onDevResizeStart = (e: React.MouseEvent) => {
-  e.preventDefault()
-  e.stopPropagation()
-  const el = devPanelRef.current
-  const currentH = el ? el.getBoundingClientRect().height : 200
-  devResizeRef.current = { startX: e.clientX, startY: e.clientY, origW: devSize.w, origH: devSize.h || currentH }
-  const onMove = (ev: MouseEvent) => {
-    if (!devResizeRef.current) return
-    setDevSize({
-      w: Math.max(520, devResizeRef.current.origW + ev.clientX - devResizeRef.current.startX),
-      h: Math.max(100, devResizeRef.current.origH + ev.clientY - devResizeRef.current.startY)
-    })
-  }
-  const onUp = () => {
-    devResizeRef.current = null
-    window.removeEventListener('mousemove', onMove)
-    window.removeEventListener('mouseup', onUp)
-  }
-  window.addEventListener('mousemove', onMove)
-  window.addEventListener('mouseup', onUp)
+/** 状态显示区块：显示键值对状态信息 */
+export interface DevStateSection {
+  type: 'state'
+  label: string
+  entries: { key: string; value: string | number }[]
 }
-```
 
-关键：基准宽度为 220px，缩放比 `scale = devSize.w / 220`，所有字体大小和 padding 都乘以 scale：
+/** 自定义渲染区块 */
+export interface DevCustomSection {
+  type: 'custom'
+  label: string
+  render: (scale: number, baseFontSize: number) => ReactNode
+}
 
-```tsx
-const scale = devSize.w / 220
-const baseFontSize = 12 * scale
-```
+export type DevSection = DevButtonSection | DevStateSection | DevCustomSection
 
-### 5. 跳转函数（devJump）
+export interface DevPanelProps {
+  /** 游戏专属区块，按顺序渲染在 BGM/音效/素材工坊 之前 */
+  sections?: DevSection[]
+  /** BGM 控制 */
+  bgmKey: BgmKey | null
+  playBGM: (key: BgmKey) => void
+  stopBGM: () => void
+  /** 已上传的 AI素材工坊 URL（从 params.materialWorkshopUrl 传入） */
+  materialWorkshopUrl?: string
+}
 
-需要根据项目的关卡/步骤（level/step）定义跳转函数，核心逻辑：
+export default function DevPanel({
+  sections = [], bgmKey, playBGM, stopBGM, materialWorkshopUrl
+}: DevPanelProps) {
+  // ─── 面板内部状态 ───
+  const [devPanelOpen, setDevPanelOpen] = useState(true)
+  const [devPos, setDevPos] = useState({ x: 8, y: 8 })
+  const [devSize, setDevSize] = useState({ w: 420, h: 0 })
+  const devDragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
+  const devResizeRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null)
+  const devPanelRef = useRef<HTMLDivElement>(null)
 
-```tsx
-const devJump = useCallback((level: LevelId, step: StepId) => {
-  // 1. 清理所有定时器
-  if (timerRef.current) clearInterval(timerRef.current)
-  // 2. 设置目标关卡和步骤
-  setCurrentLevel(level)
-  setCurrentStep(step)
-  // 3. 重置所有弹窗/动画/暂停状态
-  setShowTimeout(false)
-  setShowCharacterClap(false)
-  setIsPaused(false)
-  // 4. 根据不同步骤设置合理初始状态（项目自定义）
-  if (step === 'intro') {
-    // 重置所有游戏状态
-  } else if (step === 'countdown') {
-    // 启动倒计时
-  } else if (step === 'gameplay') {
-    // 预设目标但不启动计时器，等用户点击
-  } else if (step === 'result') {
-    // 直接展示结算状态
+  // ─── 拖拽 ───
+  const onDevDragStart = (e: React.MouseEvent) => {
+    e.preventDefault()
+    devDragRef.current = { startX: e.clientX, startY: e.clientY, origX: devPos.x, origY: devPos.y }
+    const onMove = (ev: MouseEvent) => {
+      if (!devDragRef.current) return
+      setDevPos({
+        x: Math.max(0, devDragRef.current.origX - (ev.clientX - devDragRef.current.startX)),
+        y: Math.max(0, devDragRef.current.origY + ev.clientY - devDragRef.current.startY)
+      })
+    }
+    const onUp = () => {
+      devDragRef.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
   }
-}, [])
-```
 
-### 6. JSX 渲染模板
+  // ─── 缩放 ───
+  const onDevResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const el = devPanelRef.current
+    const currentH = el ? el.getBoundingClientRect().height : 200
+    devResizeRef.current = { startX: e.clientX, startY: e.clientY, origW: devSize.w, origH: devSize.h || currentH }
+    const onMove = (ev: MouseEvent) => {
+      if (!devResizeRef.current) return
+      setDevSize({
+        w: Math.max(180, devResizeRef.current.origW + ev.clientX - devResizeRef.current.startX),
+        h: Math.max(100, devResizeRef.current.origH + ev.clientY - devResizeRef.current.startY)
+      })
+    }
+    const onUp = () => {
+      devResizeRef.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
 
-面板区块顺序：关卡 → 步骤 → 状态 → 背景音乐 → 音效测试 → AI素材工坊 → 缩放手柄
+  // ─── AI素材工坊 ───
+  const UPLOAD_API = 'https://aic-service.sdp.101.com/v1.0/cs/actions/upload_to_cs'
+  const CDN_HOST = 'https://gcdncs.101.com'
+  const [workshopUploading, setWorkshopUploading] = useState(false)
 
-```tsx
-{isDevMode && (() => {
+  const openInBrowser = useCallback((url: string) => {
+    const a = document.createElement('a')
+    a.href = url
+    a.target = '_blank'
+    a.rel = 'noopener noreferrer'
+    a.click()
+  }, [])
+
+  const openRemoteWorkshop = useCallback(() => {
+    if (!materialWorkshopUrl) {
+      alert('materialWorkshopUrl 未配置，请先点击「制作并上传」生成')
+      return
+    }
+    openInBrowser(materialWorkshopUrl)
+  }, [openInBrowser, materialWorkshopUrl])
+
+  const uploadWorkshop = useCallback(async () => {
+    if (workshopUploading) return
+    setWorkshopUploading(true)
+    try {
+      const localUrl = `${window.location.origin}${encodeURI('/素材库/preview.html')}`
+      const resp = await fetch(localUrl)
+      if (!resp.ok) throw new Error(`获取 preview.html 失败: ${resp.status}`)
+      const htmlBlob = await resp.blob()
+
+      const formData = new FormData()
+      formData.append('file', new File([htmlBlob], 'preview.html', { type: 'text/html' }))
+
+      const uploadResp = await fetch(UPLOAD_API, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'AIC',
+          'Sdp-App-Id': 'b4fb92a0-af7f-49c2-b270-8f62afac1133'
+        },
+        body: formData
+      })
+
+      if (!uploadResp.ok) throw new Error(`上传失败: ${uploadResp.status}`)
+      const dentry = await uploadResp.json()
+      const dentryId = dentry.dentry_id || dentry.dentryId || dentry.id
+      if (!dentryId) throw new Error('未获取到 dentryId')
+
+      const url = `${CDN_HOST}/v0.1/download?dentryId=${dentryId}`
+      await navigator.clipboard.writeText(url)
+      alert(`✅ AI素材工坊已上传！\n\nURL已复制到剪贴板:\n${url}\n\n请更新 exampleParams.json 中的 materialWorkshopUrl`)
+    } catch (err) {
+      const cmd = [
+        '$r = bun --env-file=".claude\\.env" run ".claude\\skills\\upload-skill\\scripts\\upload.js" "素材库\\preview.html" --json | ConvertFrom-Json;',
+        '$dentryId = $r[0].dentryId;',
+        '$url = "https://gcdncs.101.com/v0.1/download?dentryId=$dentryId";',
+        '$p = Get-Content "public\\exampleParams.json" -Raw | ConvertFrom-Json;',
+        '$p.materialWorkshopUrl = $url;',
+        '$p | ConvertTo-Json -Depth 10 | Set-Content "public\\exampleParams.json" -Encoding UTF8;',
+        'Write-Host "✅ materialWorkshopUrl updated: $url"'
+      ].join(' ')
+      await navigator.clipboard.writeText(cmd).catch(() => {})
+      const reason = err instanceof Error ? err.message : String(err)
+      alert(`浏览器直传失败（${reason}）\n\n已复制终端命令到剪贴板，请在项目根目录终端执行`)
+    } finally {
+      setWorkshopUploading(false)
+    }
+  }, [workshopUploading])
+
+  // ─── 区块渲染器 ───
   const scale = devSize.w / 220
   const baseFontSize = 12 * scale
+  const btnStyle = { fontSize: `${baseFontSize * 0.92}px`, padding: `${3 * scale}px ${8 * scale}px` }
+  const labelStyle = { fontSize: `${baseFontSize * 0.83}px` }
+  const gapStyle = { gap: `${4 * scale}px` }
+
+  const renderSection = (section: DevSection, index: number) => {
+    switch (section.type) {
+      case 'buttons':
+        return (
+          <div key={index} className={styles.devSection}>
+            <span className={styles.devLabel} style={labelStyle}>{section.label}</span>
+            <div className={styles.devBtnGroup} style={gapStyle}>
+              {section.buttons.map(({ label, active, action }) => (
+                <button
+                  key={label}
+                  className={`${styles.devBtn} ${active ? styles.devBtnActive : ''}`}
+                  onClick={action}
+                  style={btnStyle}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )
+      case 'state':
+        return (
+          <div key={index} className={styles.devSection}>
+            <span className={styles.devLabel} style={labelStyle}>{section.label}</span>
+            <div className={styles.devState} style={labelStyle}>
+              {section.entries.map(({ key, value }, i) => (
+                <span key={key}>
+                  {key}: <span className={styles.devStateVal}>{value}</span>
+                  {i < section.entries.length - 1 ? ' | ' : ''}
+                </span>
+              ))}
+            </div>
+          </div>
+        )
+      case 'custom':
+        return (
+          <div key={index} className={styles.devSection}>
+            <span className={styles.devLabel} style={labelStyle}>{section.label}</span>
+            {section.render(scale, baseFontSize)}
+          </div>
+        )
+    }
+  }
+
+  // ─── 渲染 ───
   return (
     <div
       ref={devPanelRef}
@@ -234,88 +298,39 @@ const devJump = useCallback((level: LevelId, step: StepId) => {
       </div>
       {devPanelOpen && (
         <div className={styles.devBody}>
-          {/* 关卡选择 */}
+          {/* 游戏专属区块 */}
+          {sections.map(renderSection)}
+          {/* 背景音乐（通用） */}
           <div className={styles.devSection}>
-            <span className={styles.devLabel} style={{ fontSize: `${baseFontSize * 0.83}px` }}>关卡</span>
-            <div className={styles.devBtnGroup} style={{ gap: `${4 * scale}px` }}>
-              {LEVELS.map(lv => (
-                <button
-                  key={lv.id}
-                  className={`${styles.devBtn} ${currentLevel === lv.id ? styles.devBtnActive : ''}`}
-                  onClick={() => devJump(lv.id, currentStep)}
-                  style={{ fontSize: `${baseFontSize * 0.92}px`, padding: `${3 * scale}px ${8 * scale}px` }}
-                >
-                  {lv.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          {/* 步骤选择 */}
-          <div className={styles.devSection}>
-            <span className={styles.devLabel} style={{ fontSize: `${baseFontSize * 0.83}px` }}>步骤</span>
-            <div className={styles.devBtnGroup} style={{ gap: `${4 * scale}px` }}>
-              {STEPS.map(s => (
-                <button
-                  key={s.id}
-                  className={`${styles.devBtn} ${currentStep === s.id ? styles.devBtnActive : ''}`}
-                  onClick={() => devJump(currentLevel, s.id)}
-                  style={{ fontSize: `${baseFontSize * 0.92}px`, padding: `${3 * scale}px ${8 * scale}px` }}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          {/* 状态监控区 */}
-          <div className={styles.devSection}>
-            <span className={styles.devLabel} style={{ fontSize: `${baseFontSize * 0.83}px` }}>状态</span>
-            <div className={styles.devState} style={{ fontSize: `${baseFontSize * 0.83}px` }}>
-              关卡: <span className={styles.devStateVal}>{currentLevel}</span> |{' '}
-              步骤: <span className={styles.devStateVal}>{currentStep}</span>
-              <br />
-              背景音乐: <span className={styles.devStateVal}>{
-                bgmKeyRef.current === 'main' ? '主流程' :
-                bgmKeyRef.current === 'progress' ? '行动中' :
-                bgmKeyRef.current === 'rest' ? '暂停' : '无'
-              }</span>
-            </div>
-          </div>
-          {/* 背景音乐控制 */}
-          <div className={styles.devSection}>
-            <span className={styles.devLabel} style={{ fontSize: `${baseFontSize * 0.83}px` }}>背景音乐</span>
-            <div className={styles.devBtnGroup} style={{ gap: `${4 * scale}px` }}>
+            <span className={styles.devLabel} style={labelStyle}>背景音乐</span>
+            <div className={styles.devBtnGroup} style={gapStyle}>
               {([
-                { key: 'main' as BgmKey, label: '主流程' },
-                { key: 'progress' as BgmKey, label: '行动中' },
-                { key: 'rest' as BgmKey, label: '暂停' }
+                { key: 'main' as const, label: '主流程' },
+                { key: 'progress' as const, label: '行动中' },
+                { key: 'rest' as const, label: '暂停' }
               ]).map(({ key, label }) => (
                 <button
                   key={key}
-                  className={`${styles.devBtn} ${bgmKeyRef.current === key ? styles.devBtnActive : ''}`}
+                  className={`${styles.devBtn} ${bgmKey === key ? styles.devBtnActive : ''}`}
                   onClick={() => playBGM(key)}
-                  style={{ fontSize: `${baseFontSize * 0.92}px`, padding: `${3 * scale}px ${8 * scale}px` }}
+                  style={btnStyle}
                 >
                   {label}
                 </button>
               ))}
-              <button
-                className={styles.devBtn}
-                onClick={stopBGM}
-                style={{ fontSize: `${baseFontSize * 0.92}px`, padding: `${3 * scale}px ${8 * scale}px` }}
-              >
+              <button className={styles.devBtn} onClick={stopBGM} style={btnStyle}>
                 停止
               </button>
             </div>
           </div>
-          {/* 音效测试 */}
+          {/* 音效测试（通用） */}
           <div className={styles.devSection}>
-            <span className={styles.devLabel} style={{ fontSize: `${baseFontSize * 0.83}px` }}>音效测试</span>
-            <div className={styles.devBtnGroup} style={{ gap: `${4 * scale}px` }}>
+            <span className={styles.devLabel} style={labelStyle}>音效测试</span>
+            <div className={styles.devBtnGroup} style={gapStyle}>
               {[
                 { id: 'clear1', label: '通关' },
                 { id: 'error1', label: '错误' },
                 { id: 'quiz1', label: '答题1' },
-                { id: 'quiz2', label: '答题2' },
                 { id: 'click1', label: '点击' },
                 { id: 'decide1', label: '确认' }
               ].map(({ id, label }) => (
@@ -323,25 +338,32 @@ const devJump = useCallback((level: LevelId, step: StepId) => {
                   key={id}
                   className={styles.devBtn}
                   onClick={() => soundLibrary.play(id).catch(() => {})}
-                  style={{ fontSize: `${baseFontSize * 0.92}px`, padding: `${3 * scale}px ${8 * scale}px` }}
+                  style={btnStyle}
                 >
                   {label}
                 </button>
               ))}
             </div>
           </div>
-          {/* AI素材工坊 — 上传 preview.html 到 CS 后替换此 URL */}
+          {/* AI素材工坊（通用） */}
           <div className={styles.devSection}>
-            <span className={styles.devLabel} style={{ fontSize: `${baseFontSize * 0.83}px` }}>AI素材工坊</span>
-            <a
-              className={styles.devLink}
-              href="CDN_PREVIEW_URL"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ fontSize: `${baseFontSize * 0.92}px` }}
-            >
-              🏭 打开AI素材工坊
-            </a>
+            <span className={styles.devLabel} style={labelStyle}>AI素材工坊</span>
+            <div className={styles.devBtnGroup} style={gapStyle}>
+              <button className={styles.devBtn} onClick={() => openInBrowser(`${window.location.origin}${encodeURI('/素材库/preview.html')}`)} style={btnStyle}>
+                本地预览
+              </button>
+              <button
+                className={styles.devBtn}
+                onClick={uploadWorkshop}
+                style={{ ...btnStyle, opacity: workshopUploading ? 0.5 : 1 }}
+                disabled={workshopUploading}
+              >
+                {workshopUploading ? '上传中...' : '制作并上传'}
+              </button>
+              <button className={styles.devBtn} onClick={openRemoteWorkshop} style={btnStyle}>
+                打开工坊
+              </button>
+            </div>
           </div>
           {/* 缩放手柄 */}
           <div className={styles.devResizeHandle} onMouseDown={onDevResizeStart}
@@ -350,21 +372,31 @@ const devJump = useCallback((level: LevelId, step: StepId) => {
       )}
     </div>
   )
-})()}
+}
 ```
 
-> **项目适配要点**：
-> - `LEVELS` / `STEPS` 数组替换为项目实际关卡和步骤
-> - BGM `label` 可根据项目场景自定义（如 `'战斗'` / `'探索'` / `'休息'`）
-> - 音效按钮根据项目使用的音效 ID 调整映射
-> - `CDN_PREVIEW_URL` 替换为 upload-skill 上传 preview.html 后返回的 URL（注意去掉 `attachment=true`，使用 `?dentryId=xxx` 格式直接在浏览器打开）
+</details>
 
-### 7. CSS Modules 样式
+## 第二步：复制 DevPanel.module.css
 
-将以下样式追加到 `index.module.css` 末尾：
+从模板目录读取并复制到项目根目录，**无需任何修改**：
+
+```
+源文件：.claude/skills/debug-skill/templates/DevPanel.module.css
+目标：项目根目录/DevPanel.module.css
+```
+
+使用 `read_file` 读取模板文件完整内容，然后用 `create_file` 写入项目根目录。
+
+> 如果项目根目录已存在 DevPanel.module.css，**跳过此步**，不要覆盖。
+
+<details>
+<summary>DevPanel.module.css 源码参考（点击展开，实际执行时从模板文件读取）</summary>
 
 ```css
-/* ─── Dev 调试面板 ─── */
+/* ═══════════════════════════════════════════
+   Dev 调试面板
+   ═══════════════════════════════════════════ */
 .devPanel {
   position: fixed;
   z-index: 9999;
@@ -386,9 +418,7 @@ const devJump = useCallback((level: LevelId, step: StepId) => {
   border-radius: 4px;
 }
 
-.devHeader:active {
-  cursor: grabbing;
-}
+.devHeader:active { cursor: grabbing; }
 
 .devDragHint {
   color: #555;
@@ -408,9 +438,7 @@ const devJump = useCallback((level: LevelId, step: StepId) => {
   flex-shrink: 0;
 }
 
-.devToggle:hover {
-  background: rgba(0, 80, 0, 0.8);
-}
+.devToggle:hover { background: rgba(0, 80, 0, 0.8); }
 
 .devBody {
   margin-top: 4px;
@@ -426,9 +454,7 @@ const devJump = useCallback((level: LevelId, step: StepId) => {
   position: relative;
 }
 
-.devSection {
-  margin-bottom: 8px;
-}
+.devSection { margin-bottom: 8px; }
 
 .devLabel {
   display: block;
@@ -454,6 +480,7 @@ const devJump = useCallback((level: LevelId, step: StepId) => {
   cursor: pointer;
   font-family: inherit;
   font-size: 11px;
+  white-space: nowrap;
   transition: all 0.15s;
 }
 
@@ -478,27 +505,7 @@ const devJump = useCallback((level: LevelId, step: StepId) => {
   line-height: 1.6;
 }
 
-.devStateVal {
-  color: #0f0;
-}
-
-.devLink {
-  display: inline-block;
-  color: #0f0;
-  text-decoration: none;
-  padding: 3px 8px;
-  border: 1px solid #555;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.1);
-  transition: all 0.15s;
-  cursor: pointer;
-}
-
-.devLink:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: #0f0;
-  text-decoration: underline;
-}
+.devStateVal { color: #0f0; }
 
 .devResizeHandle {
   position: absolute;
@@ -515,26 +522,200 @@ const devJump = useCallback((level: LevelId, step: StepId) => {
   border-radius: 0 0 5px 0;
 }
 
-.devResizeHandle:hover {
-  opacity: 1;
+.devResizeHandle:hover { opacity: 1; }
+```
+
+</details>
+
+## 第三步：在 index.tsx 中接入（需按游戏定制）
+
+### 3.1 Import
+
+```tsx
+import DevPanel, { type DevSection } from './DevPanel'
+```
+
+### 3.2 Dev 模式检测
+
+在组件内添加：
+
+```tsx
+const [isDevMode] = useState<boolean>(() => {
+  try {
+    const url = new URL(window.location.href)
+    return url.searchParams.get('dev') === '1' || /\/(dev|preview)\//.test(url.pathname)
+  } catch {
+    return false
+  }
+})
+```
+
+### 3.3 确保 exampleParams.json 包含 materialWorkshopUrl
+
+```json
+{
+  "playerName": "...",
+  "materialWorkshopUrl": ""
 }
 ```
 
-## 自定义扩展
+### 3.4 渲染面板（🔧 以下为游戏定制部分）
 
-根据项目实际需求，可以在 devBody 中自由增加更多调试区域：
+在 JSX 最外层 div 的末尾添加：
 
-- **参数编辑器**：动态修改 `params` 输入
-- **状态快照**：一键保存/恢复当前游戏状态
-- **日志面板**：显示 `onStatusChange` 回调历史
-- **性能监控**：FPS、渲染次数等
+```tsx
+{/* ═══ Dev 调试面板 @custom-dev-panel ═══ */}
+{isDevMode && (
+  <DevPanel
+    sections={[
+      // ── 按钮组区块示例：关卡跳转 ──
+      {
+        type: 'buttons',
+        label: '关卡',
+        buttons: LEVELS.map((lv, i) => ({
+          label: `L${lv.level} ${lv.name}`,
+          active: currentLevel === i && phase === 'playing',
+          action: () => startLevel(i)
+        }))
+      },
+      // ── 按钮组区块示例：屏幕/步骤切换 ──
+      {
+        type: 'buttons',
+        label: '屏幕',
+        buttons: [
+          { label: '开始页', active: phase === 'start', action: () => goToPhase('start') },
+          { label: '游戏中', active: phase === 'playing', action: () => goToPhase('playing') },
+          { label: '结算', active: phase === 'result', action: () => goToPhase('result') }
+        ]
+      },
+      // ── 状态监控区块示例 ──
+      {
+        type: 'state',
+        label: '状态',
+        entries: [
+          { key: '屏幕', value: phase },
+          { key: '关卡', value: `L${currentLevel + 1}` },
+          { key: '得分', value: score },
+          { key: '时间', value: `${timeLeft}s` }
+        ]
+      }
+    ] satisfies DevSection[]}
+    bgmKey={bgmKeyRef.current}
+    playBGM={playBGM}
+    stopBGM={stopBGM}
+    materialWorkshopUrl={props.params.materialWorkshopUrl}
+  />
+)}
+```
+
+## 三种区块类型参考
+
+### `buttons` — 按钮组
+
+用于关卡跳转、步骤切换、屏幕切换等任何需要点击触发的操作。
+
+```tsx
+{
+  type: 'buttons',
+  label: '区块标题',
+  buttons: [
+    { label: '按钮文字', active: true/false, action: () => { /* 点击回调 */ } }
+  ]
+}
+```
+
+### `state` — 键值对状态
+
+用于展示当前游戏状态（得分、时间、关卡、任意指标）。
+
+```tsx
+{
+  type: 'state',
+  label: '状态',
+  entries: [
+    { key: '得分', value: score },
+    { key: '生命值', value: `${hp}/${maxHp}` }
+  ]
+}
+```
+
+### `custom` — 自定义渲染
+
+用于需要完全自定义 UI 的场景（滑块、图表、日志等）。接收 `scale` 和 `baseFontSize` 用于等比缩放。
+
+```tsx
+{
+  type: 'custom',
+  label: '自定义区块',
+  render: (scale, baseFontSize) => (
+    <input
+      type="range"
+      min={0} max={100}
+      style={{ width: `${100 * scale}px` }}
+    />
+  )
+}
+```
+
+## 内置通用功能（无需配置）
+
+| 功能 | 描述 |
+|------|------|
+| **拖拽移动** | 标题栏可拖拽，面板悬浮在右上角 |
+| **等比缩放** | 右下角手柄拖拽，所有内容等比放大（基准 220px） |
+| **折叠/展开** | 点击 DEV 按钮切换 |
+| **BGM 控制** | 主流程 / 行动中 / 暂停 / 停止 |
+| **音效测试** | 通关 / 错误 / 答题1 / 点击 / 确认 |
+| **AI素材工坊** | 本地预览 / 制作并上传（上传 preview.html 到 CS） / 打开工坊（打开 materialWorkshopUrl） |
+
+## AI素材工坊按钮说明
+
+| 按钮 | 功能 |
+|------|------|
+| **本地预览** | 新标签页打开本地 `素材库/preview.html` |
+| **制作并上传** | 获取本地 preview.html → 上传 CS → 生成 URL → 复制到剪贴板。浏览器直传失败时自动复制终端命令到剪贴板 |
+| **打开工坊** | 新标签页打开 `params.materialWorkshopUrl`（已上传的在线版本） |
+
+### 终端命令手动上传
+
+如果浏览器直传因 CORS 失败，在项目根目录终端执行：
+
+```powershell
+$r = bun --env-file=".claude\.env" run ".claude\skills\upload-skill\scripts\upload.js" "素材库\preview.html" --json | ConvertFrom-Json; $dentryId = $r[0].dentryId; $url = "https://gcdncs.101.com/v0.1/download?dentryId=$dentryId"; $p = Get-Content "public\exampleParams.json" -Raw | ConvertFrom-Json; $p.materialWorkshopUrl = $url; $p | ConvertTo-Json -Depth 10 | Set-Content "public\exampleParams.json" -Encoding UTF8; Write-Host "✅ materialWorkshopUrl updated: $url"
+```
+
+## 面板布局
+
+```
+┌──────────────────────────────────┐
+│ 🛠 DEV ▼                     ⠿  │  ← 可拖拽标题栏
+├──────────────────────────────────┤
+│ ┌ 游戏专属 sections（按顺序） ┐  │
+│ │ 关卡                         │  │
+│ │ [L1 xxx] [L2 xxx] [L3 xxx]  │  │  ← type: 'buttons'
+│ │ 屏幕                         │  │
+│ │ [开始页] [游戏中] [结算]     │  │  ← type: 'buttons'
+│ │ 状态                         │  │
+│ │ 屏幕: playing | 得分: 5      │  │  ← type: 'state'
+│ └──────────────────────────────┘  │
+│ ┌ 通用内置（自动渲染） ───────┐  │
+│ │ 背景音乐                     │  │
+│ │ [主流程] [行动中] [暂停] [停止]│ │
+│ │ 音效测试                     │  │
+│ │ [通关] [错误] [答题1] [点击] │  │
+│ │ [确认]                       │  │
+│ │ AI素材工坊                   │  │
+│ │ [本地预览] [制作并上传] [打开]│  │
+│ └──────────────────────────────┘  │
+│                                ◢  │  ← 缩放手柄
+└──────────────────────────────────┘
+```
 
 ## 注意事项
 
-1. **仅开发环境生效** — 通过 URL `?dev=1` 或路径含 `/dev/` 激活，不影响生产打包
-2. **devJump 务必清理定时器** — 避免跳转后遗留计时器导致状态混乱
-3. **等比缩放**：基准宽度 220px，`scale = width / 220`，字体和 padding 全部乘以 scale
-4. **默认宽度建议 580px，最小宽度建议 ≥ 520px** — 更符合当前项目按钮排布，避免换行过早
-5. 面板层级 z-index: 9999，不会被游戏内容遮挡
-6. **所有标签用中文** — 确保非英文环境的开发者也能快速使用
-7. **AI素材工坊 URL 格式** — 上传到 CS 后使用 `?dentryId=xxx`（不带 `attachment=true`），确保浏览器直接打开而非下载
+1. **DevPanel.tsx 和 DevPanel.module.css 跨项目零修改复用** — 所有游戏差异通过 `sections` prop 注入
+2. **仅开发环境生效** — 通过 URL `?dev=1` 或路径含 `/dev/` 或 `/preview/` 激活
+3. **等比缩放**：基准宽度 220px，`scale = width / 220`
+4. 面板层级 z-index: 9999
+5. **所有标签用中文**
+6. **materialWorkshopUrl 格式** — 使用 `?dentryId=xxx`（不带 `attachment=true`），浏览器直接打开

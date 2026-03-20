@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="zh-CN" style="scroll-behavior:smooth">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI素材工坊 — {{PROJECT_NAME}}</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --card: #16213e;
+    --accent: #0f3460;
+    --text: #e4e4e4;
+    --muted: #8b8b9e;
+    --green: #4ecdc4;
+    --red: #ff6b6b;
+    --orange: #ffa502;
+    --gold: #f5a623;
+    --border: #2a2a4a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 24px;
+    padding-left: 204px;
+  }
+
+  /* ─── 左侧导航栏 ─── */
+  .nav-sidebar {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: 180px;
+    z-index: 9000;
+    background: #0a0e17;
+    border-right: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .nav-sidebar::-webkit-scrollbar { display: none; }
+
+  /* 品牌区 */
+  .nav-brand {
+    padding: 20px 18px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .nav-brand-icon {
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #f5a623 0%, #ff6b6b 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(245,166,35,0.3);
+  }
+  .nav-brand-text {
+    font-size: 14px;
+    font-weight: 700;
+    color: #f0f0f0;
+    letter-spacing: 0.5px;
+  }
+  .nav-brand-sub {
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 400;
+    margin-top: 1px;
+  }
+
+  /* 分组标签 */
+  .nav-group-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.25);
+    letter-spacing: 1.5px;
+    padding: 16px 18px 6px;
+    text-transform: uppercase;
+  }
+
+  /* 导航项容器 */
+  .nav-items {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 10px;
+  }
+
+  /* 导航按钮 */
+  .nav-item {
+    font-size: 13px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-weight: 500;
+    user-select: none;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    outline: none;
+  }
+  .nav-item:hover {
+    color: rgba(255,255,255,0.85);
+    background: rgba(255,255,255,0.06);
+  }
+  .nav-item.active {
+    color: #fff;
+    background: rgba(78,205,196,0.12);
+    font-weight: 600;
+    box-shadow: inset 0 0 0 1px rgba(78,205,196,0.2);
+  }
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: -10px;
+    top: 8px; bottom: 8px;
+    width: 3px;
+    border-radius: 0 4px 4px 0;
+    background: linear-gradient(180deg, var(--green), #45b7aa);
+    box-shadow: 0 0 8px rgba(78,205,196,0.5);
+  }
+
+  /* 图标 */
+  .nav-item .nav-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+    filter: grayscale(0.3);
+    transition: filter 0.2s;
+  }
+  .nav-item:hover .nav-icon,
+  .nav-item.active .nav-icon {
+    filter: grayscale(0);
+  }
+
+  /* 状态圆点 */
+  .nav-item .nav-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin-left: auto;
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+  .nav-dot.done { background: var(--green); box-shadow: 0 0 6px rgba(78,205,196,0.5); }
+  .nav-dot.partial { background: var(--orange); box-shadow: 0 0 6px rgba(255,165,2,0.4); }
+  .nav-dot.empty { background: rgba(255,255,255,0.1); }
+
+  /* 底部 */
+  .nav-footer {
+    padding: 12px 10px;
+    margin-top: auto;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .nav-scroll-top {
+    width: 100%;
+    font-size: 12px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    color: rgba(255,255,255,0.4);
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    font-family: inherit;
+    transition: all 0.25s;
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+  .nav-scroll-top:hover {
+    color: rgba(255,255,255,0.8);
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.15);
+  }
+
+  /* 进度指示器 - 底部小条 */
+  .nav-progress {
+    margin: 0 10px 4px;
+    height: 3px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.06);
+    overflow: hidden;
+  }
+  .nav-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--green), var(--gold));
+    transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+  }
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--red), var(--gold), var(--green));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 32px;
+  }
+
+  /* ─── 素材生产线面板 ─── */
+  .pipeline-panel {
+    margin-bottom: 40px;
+  }
+  .pipeline-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .pipeline-title {
+    font-size: 22px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .pipeline-title-icon { font-size: 24px; }
+  .pipeline-total-badge {
+    font-size: 13px;
+    color: var(--muted);
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-family: Consolas, monospace;
+  }
+  .pipeline-total-badge .hl { color: var(--green); font-weight: 700; }
+
+  .pipeline-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .pl-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 24px 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .pl-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .pl-card.scene-card::before { background: var(--green); }
+  .pl-card.prop-card::before { background: var(--gold); }
+  .pl-card.tts-card::before { background: #a78bfa; }
+  .pl-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+  }
+  .pl-card.complete { border-color: rgba(78,205,196,0.35); }
+
+  /* Ring progress */
+  .ring-wrap {
+    position: relative;
+    width: 110px;
+    height: 110px;
+    margin-bottom: 16px;
+  }
+  .ring-wrap svg {
+    width: 110px;
+    height: 110px;
+    transform: rotate(-90deg);
+  }
+  .ring-bg {
+    fill: none;
+    stroke: rgba(255,255,255,0.06);
+    stroke-width: 8;
+  }
+  .ring-fill {
+    fill: none;
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.8s cubic-bezier(.4,0,.2,1);
+  }
+  .ring-fill.scene-ring { stroke: var(--green); }
+  .ring-fill.prop-ring { stroke: var(--gold); }
+  .ring-fill.tts-ring { stroke: #a78bfa; }
+  .ring-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.2;
+  }
+  .ring-pct {
+    font-size: 26px;
+    font-weight: 800;
+    font-family: Consolas, 'Courier New', monospace;
+  }
+  .ring-pct.scene-clr { color: var(--green); }
+  .ring-pct.prop-clr { color: var(--gold); }
+  .ring-pct.tts-clr { color: #a78bfa; }
+  .ring-sub {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: Consolas, monospace;
+  }
+
+  .pl-card-icon { font-size: 14px; margin-bottom: 4px; }
+  .pl-card-label {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .pl-card-steps {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 16px;
+    line-height: 1.5;
+    font-family: Consolas, monospace;
+  }
+  .pl-card-steps .step-arrow { color: rgba(255,255,255,0.2); margin: 0 2px; }
+
+  .pl-card-action { margin-top: auto; }
+  .pl-card-action .produce-btn {
+    font-size: 13px;
+    padding: 7px 20px;
+    border-radius: 10px;
+  }
+  .pl-done-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--green);
+    font-weight: 600;
+    background: rgba(78,205,196,0.1);
+    padding: 7px 20px;
+    border-radius: 10px;
+  }
+
+  .pipeline-footer-bar {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .pf-label {
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+    min-width: 90px;
+  }
+  .pf-bar-bg {
+    flex: 1;
+    height: 14px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .pf-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--green), var(--gold), #a78bfa);
+    transition: width 0.8s cubic-bezier(.4,0,.2,1);
+  }
+  .pf-count {
+    font-size: 14px;
+    font-weight: 700;
+    font-family: Consolas, monospace;
+    white-space: nowrap;
+    min-width: 100px;
+    text-align: right;
+  }
+  .pf-count .done { color: var(--green); }
+  .pf-count .sep { color: var(--muted); }
+  .pf-count .total { color: var(--muted); }
+  .pf-btn {
+    margin-left: 8px;
+  }
+
+  /* ─── 区块 ─── */
+  .section { margin-bottom: 40px; scroll-margin-top: 16px; }
+  .category-banner { scroll-margin-top: 16px; }
+  .section-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    padding-left: 12px;
+    border-left: 4px solid var(--green);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* ─── 生产按钮 ─── */
+  .produce-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(78,205,196,0.08);
+    color: var(--green);
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .produce-btn:hover {
+    background: rgba(78,205,196,0.2);
+    border-color: var(--green);
+    transform: scale(1.03);
+  }
+  .produce-btn:active { transform: scale(0.97); }
+  .produce-btn .icon { font-size: 13px; }
+  .refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(255,107,107,0.06);
+    color: var(--muted);
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 500;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .refresh-btn:hover {
+    background: rgba(255,107,107,0.15);
+    color: var(--red);
+    border-color: var(--red);
+    transform: scale(1.03);
+  }
+  .refresh-btn:active { transform: scale(0.97); }
+  .refresh-btn .icon { font-size: 12px; transition: transform 0.3s; }
+  .refresh-btn:hover .icon { transform: rotate(180deg); }
+  .produce-btn.tts-btn {
+    background: rgba(167,139,250,0.08);
+    color: #a78bfa;
+    border-color: var(--border);
+  }
+  .produce-btn.tts-btn:hover {
+    background: rgba(167,139,250,0.2);
+    border-color: #a78bfa;
+  }
+  .produce-btn.all-btn {
+    background: rgba(245,166,35,0.08);
+    color: var(--gold);
+    border-color: var(--border);
+    font-size: 14px;
+    padding: 8px 20px;
+  }
+  .produce-btn.all-btn:hover {
+    background: rgba(245,166,35,0.2);
+    border-color: var(--gold);
+  }
+
+  /* ─── Toast ─── */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--card);
+    border: 1px solid var(--green);
+    color: var(--green);
+    padding: 10px 24px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 9999;
+    opacity: 0;
+    transition: all 0.35s cubic-bezier(.4,0,.2,1);
+    pointer-events: none;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    white-space: nowrap;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ─── VS Code 跳转弹窗 ─── */
+  .vscode-modal-overlay {
+    position: fixed; inset: 0; z-index: 10000;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .vscode-modal-overlay.show { opacity: 1; pointer-events: auto; }
+  .vscode-modal {
+    background: #1e2233; border: 1px solid rgba(78,205,196,0.3);
+    border-radius: 16px; padding: 28px 32px; width: 380px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    text-align: center;
+  }
+  .vscode-modal-icon { font-size: 40px; margin-bottom: 12px; }
+  .vscode-modal-title { font-size: 16px; font-weight: 700; color: #f0f0f0; margin-bottom: 6px; }
+  .vscode-modal-sub { font-size: 12px; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+  .vscode-modal-btn {
+    display: inline-block; padding: 12px 36px;
+    background: linear-gradient(135deg, #007acc 0%, #0098ff 100%);
+    color: #fff; font-size: 15px; font-weight: 700;
+    border: none; border-radius: 10px; cursor: pointer;
+    text-decoration: none;
+    box-shadow: 0 4px 16px rgba(0,122,204,0.4);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .vscode-modal-btn:hover { transform: scale(1.04); box-shadow: 0 6px 24px rgba(0,122,204,0.5); }
+  .vscode-modal-btn:active { transform: scale(0.97); }
+  .vscode-modal-close {
+    display: block; margin-top: 14px;
+    font-size: 12px; color: var(--muted); cursor: pointer;
+    background: none; border: none;
+  }
+  .vscode-modal-close:hover { color: var(--text); }
+
+  /* ─── 重置提示词弹窗 ─── */
+  .reset-modal-overlay {
+    position: fixed; inset: 0; z-index: 10001;
+    background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .reset-modal-overlay.show { opacity: 1; pointer-events: auto; }
+  .reset-modal {
+    background: #1e2233; border: 1px solid rgba(245,166,35,0.35);
+    border-radius: 16px; padding: 24px 28px; width: 520px; max-width: 90vw;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+  .reset-modal-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px;
+  }
+  .reset-modal-icon { font-size: 28px; }
+  .reset-modal-title { font-size: 15px; font-weight: 700; color: #f0f0f0; }
+  .reset-modal-id { font-size: 11px; color: var(--muted); font-family: Consolas, monospace; margin-left: auto; }
+  .reset-modal label {
+    display: block; font-size: 11px; color: var(--muted);
+    margin-bottom: 4px; font-weight: 600; letter-spacing: 0.5px;
+  }
+  .reset-modal-old {
+    width: 100%; min-height: 56px; max-height: 100px;
+    font-size: 11px; color: #888; background: rgba(0,0,0,0.3);
+    padding: 8px; border: 1px solid var(--border); border-radius: 6px;
+    line-height: 1.5; resize: none; outline: none; font-family: inherit;
+  }
+  .reset-modal-input {
+    width: 100%; min-height: 80px;
+    font-size: 12px; color: #eee; background: rgba(0,0,0,0.35);
+    padding: 10px; border: 1px solid rgba(245,166,35,0.3); border-radius: 8px;
+    line-height: 1.5; resize: vertical; outline: none; font-family: inherit;
+    margin-top: 12px; transition: border-color .2s;
+  }
+  .reset-modal-input:focus { border-color: var(--gold); }
+  .reset-modal-input::placeholder { color: #555; }
+  .reset-modal-actions {
+    display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px;
+  }
+  .reset-modal-btn {
+    padding: 8px 20px; border-radius: 8px; font-size: 13px;
+    font-weight: 600; cursor: pointer; border: none; transition: all .15s;
+  }
+  .reset-modal-btn.cancel {
+    background: rgba(255,255,255,0.08); color: #aaa;
+  }
+  .reset-modal-btn.cancel:hover { background: rgba(255,255,255,0.15); color: #fff; }
+  .reset-modal-btn.confirm {
+    background: linear-gradient(135deg, #f5a623, #ff6b6b);
+    color: #fff; box-shadow: 0 4px 12px rgba(245,166,35,0.3);
+  }
+  .reset-modal-btn.confirm:hover { filter: brightness(1.1); transform: scale(1.02); }
+  .reset-modal-btn.confirm:active { transform: scale(0.97); }
+
+  /* ─── 网格 ─── */
+  .grid { display: grid; gap: 16px; }
+  .grid-bg { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+  .grid-prop { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .grid-char { grid-template-columns: repeat(3, 1fr); }
+  .grid-audio { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+
+  /* ─── 卡片 ─── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+  .card-img-wrap {
+    position: relative;
+    background: #0d0d1a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .card-img-wrap.bg { height: 180px; }
+  .card-img-wrap.prop { height: 140px; padding: 16px; }
+  .card-img-wrap.char { height: 220px; padding: 12px; }
+  .card-img-wrap img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .card-img-wrap.bg img { object-fit: cover; width: 100%; height: 100%; }
+
+  .badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 600;
+  }
+  .badge-produced { background: var(--green); color: #000; }
+  .badge-deployed { background: var(--green); color: #000; }
+  .badge-planned { background: var(--orange); color: #000; }
+  .badge-level {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+  }
+  .badge-priority {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    font-weight: 700;
+  }
+  .badge-p0 { background: rgba(255,107,107,0.2); color: var(--red); }
+  .badge-p1 { background: rgba(255,165,2,0.2); color: var(--orange); }
+
+  .card-body { padding: 12px 16px; }
+  .card-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .card-id { font-size: 11px; color: var(--muted); font-family: Consolas, monospace; margin-bottom: 4px; }
+  .card-meta { font-size: 12px; color: var(--muted); }
+
+  .placeholder-icon {
+    font-size: 48px;
+    opacity: 0.6;
+    user-select: none;
+  }
+  .planned-label {
+    color: var(--orange);
+    font-size: 12px;
+    margin-top: 6px;
+  }
+
+  /* ─── Prompt 折叠 ─── */
+  .prompt-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+  }
+  .prompt-toggle {
+    font-size: 11px;
+    color: var(--green);
+    cursor: pointer;
+    display: inline-block;
+    user-select: none;
+  }
+  .prompt-toggle:hover { text-decoration: underline; }
+  .prompt-actions {
+    display: none;
+    margin-left: auto;
+    gap: 6px;
+  }
+  .prompt-toolbar.open .prompt-actions { display: flex; }
+  .prompt-wrap {
+    display: none;
+    margin-top: 6px;
+    width: 100%;
+  }
+  .prompt-wrap.show { display: block; }
+  .prompt-text {
+    width: 100%;
+    height: 100px;
+    max-height: 100px;
+    font-size: 11px;
+    font-family: inherit;
+    color: #ddd;
+    background: rgba(0,0,0,0.35);
+    padding: 8px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    line-height: 1.5;
+    word-break: break-word;
+    resize: none;
+    outline: none;
+    overflow-y: auto;
+    transition: border-color .2s;
+  }
+  .prompt-text:focus {
+    border-color: var(--green);
+  }
+  .prompt-btn {
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.08);
+    color: #ccc;
+    cursor: pointer;
+    transition: all .15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .prompt-btn:hover {
+    background: var(--green);
+    color: #000;
+    border-color: var(--green);
+  }
+  .prompt-btn.copied {
+    background: var(--green);
+    color: #000;
+    border-color: var(--green);
+  }
+  .prompt-btn.reproduce {
+    background: linear-gradient(135deg, #f5a623, #ff6b6b);
+    color: #fff;
+    border-color: transparent;
+    font-weight: 600;
+  }
+  .prompt-btn.reproduce:hover {
+    filter: brightness(1.15);
+    box-shadow: 0 0 8px rgba(245,166,35,0.4);
+  }
+  .prompt-changed {
+    border-color: var(--orange) !important;
+    box-shadow: 0 0 0 1px var(--orange);
+  }
+  .prompt-saved-tip {
+    font-size: 10px;
+    color: var(--orange);
+    margin-left: 8px;
+    opacity: 0;
+    transition: opacity .3s;
+  }
+  .prompt-saved-tip.show { opacity: 1; }
+
+  /* ─── 角色 ─── */
+  .char-states { display: flex; gap: 8px; height: 100%; width: 100%; justify-content: center; }
+  .char-state { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .char-state-figure {
+    width: 100%;
+    height: 180px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .char-state img { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
+  .char-state-label { font-size: 11px; color: var(--muted); background: rgba(0,0,0,0.4); padding: 1px 8px; border-radius: 4px; }
+
+  /* ─── 音频 ─── */
+  .audio-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .audio-card .card-title { margin-bottom: 8px; }
+  .audio-card audio { width: 100%; height: 32px; }
+  .audio-url { font-size: 10px; color: var(--muted); word-break: break-all; margin-top: 6px; }
+  .audio-url a { color: var(--green); text-decoration: none; }
+
+  /* ─── TTS 表格 ─── */
+  .table-wrap { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .tts-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tts-table th {
+    background: var(--accent);
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+  }
+  .tts-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .tts-table tr:hover { background: rgba(255,255,255,0.03); }
+  .role-tag { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; font-weight: 600; color: #000; }
+  .role-tag.narrator { background: var(--muted); }
+  .model-tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #2a2a4a; color: #a78bfa; font-family: Consolas, monospace; }
+  .ref-tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #2a2a4a; color: var(--green); font-family: Consolas, monospace; }
+  .tts-status { font-size: 11px; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
+  .tts-status.pending { background: #333; color: var(--orange); }
+  .tts-status.ready { background: #1a3a2a; color: var(--green); }
+
+  .img-error { color: var(--red); font-size: 12px; text-align: center; padding: 16px; }
+
+  /* ─── 关卡概览 ─── */
+  .grid-levels { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  .level-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .level-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+  .level-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .level-icon { font-size: 32px; }
+  .level-name { font-size: 16px; font-weight: 700; }
+  .level-subtitle { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .level-body { padding: 16px 20px; }
+  .level-body h4 {
+    font-size: 12px;
+    color: var(--green);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .level-body ul {
+    list-style: none;
+    margin-bottom: 14px;
+  }
+  .level-body ul li {
+    font-size: 13px;
+    color: var(--text);
+    padding: 3px 0;
+    padding-left: 18px;
+    position: relative;
+  }
+  .level-body ul li::before {
+    content: '•';
+    position: absolute;
+    left: 4px;
+    color: var(--green);
+    font-weight: 700;
+  }
+  .level-tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 600;
+    margin-right: 4px;
+  }
+  .level-tag.fish { background: rgba(78,205,196,0.15); color: var(--green); }
+  .level-tag.mechanic { background: rgba(245,166,35,0.15); color: var(--orange); }
+  .level-tag.difficulty { background: rgba(255,107,107,0.15); color: var(--red); }
+  .level-tags { margin-top: 6px; }
+
+  /* ─── 素材分类标识 ─── */
+  .category-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    margin: 40px 0 16px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    scroll-margin-top: 16px;
+  }
+  .category-banner.scene-cat {
+    background: linear-gradient(135deg, rgba(78,205,196,0.1), rgba(78,205,196,0.03));
+    border: 1px solid rgba(78,205,196,0.25);
+    color: var(--green);
+  }
+  .category-banner.prop-cat {
+    background: linear-gradient(135deg, rgba(245,166,35,0.1), rgba(245,166,35,0.03));
+    border: 1px solid rgba(245,166,35,0.25);
+    color: var(--gold);
+  }
+  .category-banner .cat-sep { color: var(--muted); font-weight: 400; font-size: 13px; }
+  .category-banner .cat-desc {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--muted);
+    margin-left: auto;
+    background: rgba(0,0,0,0.3);
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-family: Consolas, monospace;
+  }
+  .produce-btn.prop-btn {
+    background: rgba(245,166,35,0.08);
+    color: var(--gold);
+    border-color: var(--border);
+  }
+  .produce-btn.prop-btn:hover {
+    background: rgba(245,166,35,0.2);
+    border-color: var(--gold);
+  }
+
+  /* ─── 页脚 ─── */
+  .footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav-sidebar" id="navBar">
+  <div class="nav-brand">
+    <div class="nav-brand-icon">{{PROJECT_ICON}}</div>
+    <div>
+      <div class="nav-brand-text">AI素材工坊</div>
+      <div class="nav-brand-sub">{{PROJECT_SHORT_NAME}}</div>
+    </div>
+  </div>
+  {{NAV_ITEMS}}
+  <div class="nav-progress" id="navProgress"><div class="nav-progress-fill" style="width:0%"></div></div>
+  <div class="nav-footer">
+    <button class="nav-scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑ 回到顶部</button>
+  </div>
+</nav>
+
+  <h1>AI素材工坊 — {{PROJECT_NAME}}</h1>
+<p class="subtitle">生成时间: {{GENERATED_AT}} | 来源: {{SOURCE_FILE}}</p>
+
+<div id="sec-pipeline"></div>
+<div class="pipeline-panel" id="pipelinePanel"></div>
+
+<div id="toast" class="toast"></div>
+<!-- VS Code 跳转弹窗 -->
+<div id="vscodeModal" class="vscode-modal-overlay" onclick="if(event.target===this)closeVscodeModal()">
+  <div class="vscode-modal">
+    <div class="vscode-modal-icon">🚀</div>
+    <div class="vscode-modal-title">指令已复制到剪贴板</div>
+    <div class="vscode-modal-sub" id="vscodeModalSub">请点击下方按钮打开 VS Code，<br>然后在 Copilot 聊天框中粘贴执行</div>
+    <a id="vscodeModalLink" class="vscode-modal-btn" href="#">⚡ 打开 VS Code</a>
+    <button class="vscode-modal-close" onclick="closeVscodeModal()">关闭</button>
+  </div>
+</div>
+
+<!-- 重置提示词弹窗 -->
+<div id="resetPromptModal" class="reset-modal-overlay" onclick="if(event.target===this)closeResetModal()">
+  <div class="reset-modal">
+    <div class="reset-modal-header">
+      <span class="reset-modal-icon">🔄</span>
+      <span class="reset-modal-title">重置提示词</span>
+      <span class="reset-modal-id" id="resetModalId"></span>
+    </div>
+    <label>当前提示词</label>
+    <textarea class="reset-modal-old" id="resetModalOld" readonly></textarea>
+    <label style="margin-top:12px">输入修改需求（描述你想要的变化）</label>
+    <textarea class="reset-modal-input" id="resetModalInput" placeholder="例如：改为俯视角度、水面更清澈、增加荷叶元素、颜色更鲜艳..."></textarea>
+    <div class="reset-modal-actions">
+      <button class="reset-modal-btn cancel" onclick="closeResetModal()">取消</button>
+      <button class="reset-modal-btn confirm" id="resetModalConfirm" onclick="confirmResetPrompt()">📋 确定并复制到 Copilot</button>
+    </div>
+  </div>
+</div>
+
+{{LEVELS_HTML}}
+
+{{SECTIONS_HTML}}
+
+<div class="footer">
+  AI素材工坊页 · 项目要求：所有资源必须使用 CDN URL，不支持相对路径<br>
+  Pipeline 就绪，设置环境变量后可批量生产全部素材
+</div>
+
+<script>
+// ═══ 数据定义（由生成器注入）═══
+const SCENES = {{SCENES_DATA}};
+const PROP_GROUPS = {{PROP_GROUPS_DATA}};
+const CHARACTERS = {{CHARACTERS_DATA}};
+const NARRATOR_VOICE = {{NARRATOR_VOICE_DATA}};
+const BGMS = {{BGMS_DATA}};
+const TTS = {{TTS_DATA}};
+const ROLE_NAMES = {{ROLE_NAMES_DATA}};
+const WORKSPACE_PATH = '{{WORKSPACE_PATH}}';
+
+// ═══ 从 PROP_GROUPS 展开所有道具项 ═══
+const ALL_PROPS = [];
+const PROP_GRID_MAP = {};
+for (const g of PROP_GROUPS) {
+  PROP_GRID_MAP[g.key] = g.items;
+  ALL_PROPS.push(...g.items);
+}
+
+// ═══ Prompt 交互 ═══
+const ALL_DATA_ARRAYS = [SCENES, ...PROP_GROUPS.map(g => g.items)];
+
+function findItemById(id) {
+  for (const arr of ALL_DATA_ARRAYS) {
+    const item = arr.find(d => d.id === id);
+    if (item) return item;
+  }
+  return null;
+}
+
+function togglePrompt(el) {
+  const toolbar = el.closest('.prompt-toolbar');
+  const wrap = toolbar.nextElementSibling;
+  const isOpen = wrap.classList.toggle('show');
+  toolbar.classList.toggle('open', isOpen);
+  el.textContent = isOpen ? '▼ 编辑 Prompt' : '▶ 编辑 Prompt';
+  if (isOpen) {
+    const ta = wrap.querySelector('textarea');
+    if (!ta._listening) {
+      ta._listening = true;
+      const origVal = ta.value;
+      ta.addEventListener('input', () => {
+        ta.classList.toggle('prompt-changed', ta.value !== origVal);
+      });
+    }
+  }
+}
+
+function copyPrompt(btn) {
+  const toolbar = btn.closest('.prompt-toolbar');
+  const ta = toolbar.nextElementSibling.querySelector('textarea');
+  navigator.clipboard.writeText(ta.value).then(() => {
+    btn.innerHTML = '✅ 已复制';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.innerHTML = '📋 复制'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+function buildSingleAssetCopilotPrompt(item, promptText) {
+  const isScene = SCENES.some(s => s.id === item.id);
+  const isPropLike = ALL_PROPS.some(p => p.id === item.id);
+  const spec = item.spec ? '，规格 ' + item.spec : '';
+
+  if (isPropLike) {
+    return '请帮我重新生产单个道具素材「' + item.name + '」（' + item.id + spec + '）。\n' +
+      '使用以下最新 prompt：\n' + promptText + '\n\n' +
+      '执行要求：\n' +
+      '1. 从 素材库/assets.json 中定位 ' + item.id + ' 对应素材，使用 produce-skill 的 asset-generate.js --type 12 生产新图\n' +
+      '2. 对该图片执行 transparent-bg-skill 去背景透明化\n' +
+      '3. 使用 upload-skill 上传透明图并获取 CDN URL\n' +
+      '4. 将新 URL 同步写入以下文件中该素材对应条目：\n' +
+      '   - 素材库/materials.json（materialId=' + item.id + '，更新 remoteUrl/status）\n' +
+      '   - 素材库/preview.html（id=' + item.id + '，更新 url/status/prompt）\n' +
+      '   - asset-urls.ts（更新该素材对应的 ASSET_URLS 键值）\n' +
+      '5. 最后输出修改了哪些文件与新 URL。';
+  }
+
+  if (isScene) {
+    return '请帮我重新生产单个场景素材「' + item.name + '」（' + item.id + spec + '）。\n' +
+      '使用以下最新 prompt：\n' + promptText + '\n\n' +
+      '执行要求：\n' +
+      '1. 从 素材库/assets.json 中定位 ' + item.id + ' 对应素材，使用 produce-skill 的 asset-generate.js --type 12 生产新图\n' +
+      '2. 获取产物 CDN URL（场景素材无需透明化）\n' +
+      '3. 将新 URL 同步写入以下文件中该素材对应条目：\n' +
+      '   - 素材库/materials.json（materialId=' + item.id + '，更新 remoteUrl/status）\n' +
+      '   - 素材库/preview.html（id=' + item.id + '，更新 url/status/prompt）\n' +
+      '   - asset-urls.ts（更新该素材对应的 ASSET_URLS 键值）\n' +
+      '4. 最后输出修改了哪些文件与新 URL。';
+  }
+
+  return '请帮我重新生产素材「' + item.name + '」（' + item.id + spec + '）。\n' +
+    '使用以下最新 prompt：\n' + promptText + '\n\n' +
+    '生产完成后请同步更新：素材库/preview.html、素材库/materials.json、asset-urls.ts，并返回新 URL 与变更文件列表。';
+}
+
+// ═══ 重置提示词 ═══
+let _resetTargetId = null;
+
+function openResetPromptModal(btn) {
+  const toolbar = btn.closest('.prompt-toolbar');
+  const ta = toolbar.nextElementSibling.querySelector('textarea');
+  const id = ta.dataset.id;
+  const item = findItemById(id);
+  _resetTargetId = id;
+  document.getElementById('resetModalId').textContent = id + (item ? ' · ' + item.name : '');
+  document.getElementById('resetModalOld').value = ta.value;
+  document.getElementById('resetModalInput').value = '';
+  document.getElementById('resetPromptModal').classList.add('show');
+  setTimeout(() => document.getElementById('resetModalInput').focus(), 100);
+}
+
+function closeResetModal() {
+  document.getElementById('resetPromptModal').classList.remove('show');
+  _resetTargetId = null;
+}
+
+function confirmResetPrompt() {
+  const id = _resetTargetId;
+  if (!id) return;
+  const oldPrompt = document.getElementById('resetModalOld').value.trim();
+  const userRequirement = document.getElementById('resetModalInput').value.trim();
+  if (!userRequirement) {
+    document.getElementById('resetModalInput').style.borderColor = 'var(--red)';
+    document.getElementById('resetModalInput').placeholder = '⚠️ 请输入你的修改需求...';
+    setTimeout(() => document.getElementById('resetModalInput').style.borderColor = '', 1500);
+    return;
+  }
+  const item = findItemById(id);
+  const name = item ? item.name : id;
+  const spec = item ? item.spec : '';
+  const isScene = SCENES.some(s => s.id === id);
+  const isPropLike = ALL_PROPS.some(p => p.id === id);
+
+  let copyText = '请帮我重置素材「' + name + '」（' + id + '，' + spec + '）的提示词并重新生产。\n\n';
+  copyText += '【第一步：生成新提示词】\n';
+  copyText += '旧提示词如下：\n' + oldPrompt + '\n\n';
+  copyText += '用户的修改需求：' + userRequirement + '\n\n';
+  copyText += '请根据用户需求，在旧提示词基础上生成一段新的英文图片生成提示词（prompt）。\n';
+  copyText += '要求：保留旧 prompt 中仍然适用的描述（如画风风格、尺寸、透明背景等通用设定），仅按用户需求修改相关部分。\n\n';
+  copyText += '【第二步：更新项目文件中的 prompt】\n';
+  copyText += '将新生成的 prompt 同步写入以下位置：\n';
+  copyText += '- 素材库/preview.html 中 id=\'' + id + '\' 的 prompt 字段\n';
+  copyText += '- 素材库/materials.json 中 materialId=\'' + id + '\' 的对应条目（如有 prompt 字段则更新）\n\n';
+  copyText += '【第三步：使用新 prompt 生产素材】\n';
+  if (isScene) {
+    copyText += '场景素材不需要透明化，直接生产：\n';
+    copyText += '1. 使用 produce-skill 的 asset-generate.js --type 12 生产新图\n';
+    copyText += '2. 获取产物 CDN URL\n';
+    copyText += '3. 将新 URL 同步写入：素材库/materials.json（remoteUrl/status）、素材库/preview.html（url/status）、asset-urls.ts\n';
+  } else if (isPropLike) {
+    copyText += '道具素材需要透明背景：\n';
+    copyText += '1. 使用 produce-skill 的 asset-generate.js --type 12 生产新图\n';
+    copyText += '2. 执行 transparent-bg-skill 去背景透明化\n';
+    copyText += '3. 使用 upload-skill 上传获取 CDN URL\n';
+    copyText += '4. 将新 URL 同步写入：素材库/materials.json（remoteUrl/status）、素材库/preview.html（url/status）、asset-urls.ts\n';
+  } else {
+    copyText += '使用 produce-skill 生产后更新 素材库/preview.html、素材库/materials.json、asset-urls.ts。\n';
+  }
+  copyText += '\n【第四步：输出结果】\n';
+  copyText += '输出新 prompt 全文、新 URL、修改了哪些文件。';
+
+  closeResetModal();
+  copyAndFocus(copyText, '重置「' + name + '」提示词');
+}
+
+// ═══ 渲染函数 ═══
+function renderScenes() {
+  var grid = document.getElementById('scenesGrid');
+  if (!grid) return;
+  grid.innerHTML = SCENES.map(function(s) {
+    var imgContent = s.url
+      ? '<img src="'+s.url+'" alt="'+s.name+'" onerror="this.parentElement.innerHTML=\'<div class=img-error>加载失败</div>\'">'
+      : '<div style="display:flex;flex-direction:column;align-items:center"><span class="placeholder-icon">'+s.icon+'</span><span class="planned-label">待生产</span></div>';
+    var statusLabel = s.url ? '已部署' : '待制作';
+    var statusClass = s.url ? 'produced' : 'planned';
+    return '<div class="card">'+
+      '<div class="card-img-wrap bg">'+imgContent+
+        '<span class="badge badge-'+statusClass+'">'+statusLabel+'</span>'+
+        (s.level?'<span class="badge-level">'+s.level+'</span>':'')+
+        (s.priority?'<span class="badge-priority badge-'+s.priority.toLowerCase()+'">'+s.priority+'</span>':'')+
+      '</div>'+
+      '<div class="card-body">'+
+        '<div class="card-title">'+s.name+'</div>'+
+        '<div class="card-id">'+s.id+'</div>'+
+        '<div class="card-meta">'+s.spec+'</div>'+
+        (s.prompt?'<div class="prompt-toolbar" id="pt_'+s.id+'"><span class="prompt-toggle" onclick="togglePrompt(this)">▶ 编辑 Prompt</span><span class="prompt-saved-tip"></span><div class="prompt-actions"><button class="prompt-btn" onclick="copyPrompt(this)">📋 复制</button><button class="prompt-btn reproduce" onclick="openResetPromptModal(this)">🔄 重新生产</button></div></div><div class="prompt-wrap"><textarea class="prompt-text" data-id="'+s.id+'" spellcheck="false">'+s.prompt+'</textarea></div>':'')+
+      '</div></div>';
+  }).join('');
+}
+
+function renderPropGrid(data, gridId) {
+  var grid = document.getElementById(gridId);
+  if (!grid) return;
+  grid.innerHTML = data.map(function(p) {
+    var imgContent = p.url
+      ? '<img src="'+p.url+'" alt="'+p.name+'" onerror="this.parentElement.innerHTML=\'<div class=img-error>加载失败</div>\'">'
+      : '<div style="display:flex;flex-direction:column;align-items:center"><span class="placeholder-icon">'+p.icon+'</span><span class="planned-label">待生产</span></div>';
+    var statusLabel = p.url ? '已部署' : '待制作';
+    var statusClass = p.url ? 'produced' : 'planned';
+    return '<div class="card">'+
+      '<div class="card-img-wrap prop">'+imgContent+
+        '<span class="badge badge-'+statusClass+'">'+statusLabel+'</span>'+
+        (p.level?'<span class="badge-level">'+p.level+'</span>':'')+
+        (p.priority?'<span class="badge-priority badge-'+p.priority.toLowerCase()+'">'+p.priority+'</span>':'')+
+      '</div>'+
+      '<div class="card-body">'+
+        '<div class="card-title">'+p.name+'</div>'+
+        '<div class="card-id">'+p.id+'</div>'+
+        '<div class="card-meta">'+p.spec+'</div>'+
+        (p.prompt?'<div class="prompt-toolbar" id="pt_'+p.id+'"><span class="prompt-toggle" onclick="togglePrompt(this)">▶ 编辑 Prompt</span><span class="prompt-saved-tip"></span><div class="prompt-actions"><button class="prompt-btn" onclick="copyPrompt(this)">📋 复制</button><button class="prompt-btn reproduce" onclick="openResetPromptModal(this)">🔄 重新生产</button></div></div><div class="prompt-wrap"><textarea class="prompt-text" data-id="'+p.id+'" spellcheck="false">'+p.prompt+'</textarea></div>':'')+
+      '</div></div>';
+  }).join('');
+}
+
+function renderChars() {
+  var grid = document.getElementById('charsGrid');
+  if (!grid || !CHARACTERS.length) return;
+  grid.innerHTML = CHARACTERS.map(function(c) {
+    return '<div class="card">'+
+      '<div class="card-img-wrap char">'+
+        '<div class="char-states">'+
+          '<div class="char-state"><div class="char-state-figure"><img src="'+c.idle+'" alt="'+c.name+' idle"></div><span class="char-state-label">idle</span></div>'+
+          '<div class="char-state"><div class="char-state-figure"><img src="'+c.speaking+'" alt="'+c.name+' speaking"></div><span class="char-state-label">speaking</span></div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="card-body">'+
+        '<div class="card-title" style="color:'+c.color+'">'+c.name+'</div>'+
+        '<div class="card-id">'+c.id+'</div>'+
+        '<div class="card-meta">🎙️ '+c.voiceDesc+' · <span class="model-tag">'+c.model+'</span> <span class="ref-tag">'+c.ref_audio+'</span></div>'+
+      '</div></div>';
+  }).join('');
+
+  // 渲染角色音色配置表
+  var allVoices = CHARACTERS.map(function(c) { return {name:c.name, id:c.id, model:c.model, ref_audio:c.ref_audio, desc:c.voiceDesc, color:c.color}; });
+  if (NARRATOR_VOICE) allVoices.push({name:NARRATOR_VOICE.name, id:NARRATOR_VOICE.id, model:NARRATOR_VOICE.model, ref_audio:NARRATOR_VOICE.ref_audio, desc:NARRATOR_VOICE.voiceDesc, color:'var(--muted)'});
+  var tbl = document.getElementById('voiceConfigTable');
+  if (tbl) {
+    tbl.innerHTML = allVoices.map(function(v) {
+      return '<tr><td><span style="color:'+v.color+';font-weight:600">'+v.name+'</span></td>'+
+        '<td style="font-family:monospace;font-size:11px">'+v.id+'</td>'+
+        '<td><span class="model-tag">'+v.model+'</span></td>'+
+        '<td><span class="ref-tag">'+v.ref_audio+'</span></td>'+
+        '<td style="font-size:12px;color:var(--muted)">'+v.desc+'</td></tr>';
+    }).join('');
+  }
+}
+
+function renderBGM() {
+  var grid = document.getElementById('bgmGrid');
+  if (!grid || !BGMS.length) return;
+  grid.innerHTML = BGMS.map(function(b) {
+    return '<div class="audio-card">'+
+      '<div class="card-title">'+b.name+'</div>'+
+      '<div class="card-meta" style="margin-bottom:8px">'+b.desc+'</div>'+
+      '<audio controls preload="none" src="'+b.url+'"></audio>'+
+      '<div class="audio-url"><a href="'+b.url+'" target="_blank">'+b.id+'.mp3</a></div>'+
+    '</div>';
+  }).join('');
+}
+
+function renderTTS() {
+  var tbody = document.querySelector('#ttsTable tbody');
+  if (!tbody || !TTS.length) return;
+  tbody.innerHTML = TTS.map(function(t,i) {
+    return '<tr>'+
+      '<td>'+(i+1)+'</td>'+
+      '<td><span class="role-tag '+t.role+'">'+(ROLE_NAMES[t.role]||t.role)+'</span></td>'+
+      '<td style="font-family:monospace;font-size:11px">'+t.name+'</td>'+
+      '<td>'+t.stage+'</td>'+
+      '<td>'+(t.model?'<span class="model-tag">'+t.model+'</span>':'—')+'</td>'+
+      '<td>'+(t.ref_audio?'<span class="ref-tag">'+t.ref_audio+'</span>':'—')+'</td>'+
+      '<td>'+t.content+'</td>'+
+      '<td>'+(t.url?'<audio controls preload="none" src="'+t.url+'"></audio>':'<span style="color:var(--muted);font-size:11px">—</span>')+'</td>'+
+      '<td><span class="tts-status '+(t.url?'ready':'pending')+'">'+(t.url?'已生产':'待生产')+'</span></td>'+
+    '</tr>';
+  }).join('');
+}
+
+// ═══ 生产命令系统 ═══
+const SECTION_DATA = {};
+// 场景
+SECTION_DATA['scenes'] = { label:'场景背景', items: SCENES, type:'图片', transparentBg: false, category: 'scene' };
+// 道具分组
+for (const g of PROP_GROUPS) {
+  SECTION_DATA[g.key] = { label: g.label, items: g.items, type:'图片', transparentBg: true, category: 'prop' };
+}
+// TTS
+SECTION_DATA['tts'] = { label:'TTS语音', items: TTS, type:'TTS', transparentBg: false, category: 'tts' };
+
+function showToast(msg, duration) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(function() { el.classList.remove('show'); }, duration || 3000);
+}
+
+function buildCopilotPrompt(key) {
+  var sec = SECTION_DATA[key];
+  if (!sec) return null;
+  var allItems = sec.items;
+  var nameList = allItems.map(function(i) { return i.name; }).join('、');
+  var total = allItems.length;
+
+  if (sec.type === 'TTS') {
+    return '请帮我生产「' + sec.label + '」素材（' + total + '条TTS：' + nameList + '）。\n' +
+      '读取 素材库/assets.json 中 type 21 的 TTS 数据，使用 produce-skill 的 asset-generate.js 执行生产，' +
+      '生产完成后更新 素材库/tts.json 和 素材库/preview.html 中对应条目的 url 字段。';
+  }
+  if (sec.transparentBg) {
+    return '请帮我生产「' + sec.label + '」道具素材并完成透明化处理（' + total + '张：' + nameList + '）。\n' +
+      '完整流程：\n' +
+      '1. 从 素材库/assets.json 提取这些素材的 prompt，使用 produce-skill 的 asset-generate.js --type 12 执行文生图生产\n' +
+      '2. 将生成的图片下载到 素材库/download/ 目录\n' +
+      '3. 使用 transparent-bg-skill 对每张图片进行去背景透明化处理\n' +
+      '4. 使用 upload-skill 将透明化后的图片上传到 CS，获取 CDN URL\n' +
+      '5. 更新 素材库/materials.json、素材库/preview.html 中对应条目的 url 字段，并写入 asset-urls.ts';
+  }
+  return '请帮我生产「' + sec.label + '」素材（' + total + '张图片：' + nameList + '）。\n' +
+    '从 素材库/assets.json 中提取这些素材的 prompt，使用 produce-skill 的 asset-generate.js --type 12 执行文生图生产，' +
+    '生产完成后更新 素材库/materials.json、素材库/preview.html 中对应条目的 url 字段，并写入 asset-urls.ts。';
+}
+
+function copyAndFocus(text, label) {
+  var vscodePath = 'vscode://file/' + encodeURI(WORKSPACE_PATH.replace(/\\/g, '/'));
+  var ta = document.createElement('textarea');
+  ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px;opacity:0';
+  document.body.appendChild(ta); ta.select();
+  var copied = false;
+  try { copied = document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+  if (!copied && navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(function() {});
+  }
+  var modal = document.getElementById('vscodeModal');
+  var link = document.getElementById('vscodeModalLink');
+  var sub = document.getElementById('vscodeModalSub');
+  link.href = vscodePath;
+  sub.innerHTML = copied
+    ? '已复制「<b>'+label+'</b>」指令<br>点击下方按钮切换到 VS Code，在 Copilot 聊天框粘贴执行'
+    : '⚠️ 自动复制可能失败，请手动复制指令后打开 VS Code';
+  modal.classList.add('show');
+}
+
+function closeVscodeModal() {
+  document.getElementById('vscodeModal').classList.remove('show');
+}
+
+function produceSection(key) {
+  var sec = SECTION_DATA[key];
+  if (!sec) return;
+  var prompt = buildCopilotPrompt(key);
+  if (!prompt) return;
+  copyAndFocus(prompt, sec.label);
+}
+
+function produceAll() {
+  var sceneParts = [], propParts = [], ttsParts = [];
+  for (var k in SECTION_DATA) {
+    var v = SECTION_DATA[k];
+    var desc = v.label + '(' + v.items.length + v.type + ')';
+    if (v.category === 'scene') sceneParts.push(desc);
+    else if (v.category === 'prop') propParts.push(desc);
+    else if (v.category === 'tts') ttsParts.push(desc);
+  }
+  var prompt = '请帮我一键生产全部素材：\n\n';
+  if (sceneParts.length) {
+    prompt += '【场景类·直接生产】' + sceneParts.join('、') + '\n→ 使用 produce-skill 文生图，生产后直接更新 URL\n\n';
+  }
+  if (propParts.length) {
+    prompt += '【道具类·生产+透明化】' + propParts.join('、') + '\n→ 文生图 → 下载 → transparent-bg-skill 去背景 → upload-skill 上传CS → 更新 URL\n\n';
+  }
+  if (ttsParts.length) {
+    prompt += '【TTS语音】' + ttsParts.join('、') + '\n→ 使用 produce-skill TTS 生产 → 更新 URL\n\n';
+  }
+  prompt += '生产完成后同步更新 素材库/materials.json、素材库/tts.json、素材库/preview.html 中所有已生产素材的 url 字段，并写入 asset-urls.ts。';
+  copyAndFocus(prompt, '全部素材');
+}
+
+function produceByCategory(cat) {
+  var keys = [];
+  for (var k in SECTION_DATA) {
+    if (SECTION_DATA[k].category === cat) keys.push({key:k, val:SECTION_DATA[k]});
+  }
+  if (!keys.length) return;
+  var parts = keys.map(function(kv) { return kv.val.label + '(' + kv.val.items.length + kv.val.type + ')'; }).join('、');
+
+  if (cat === 'scene') {
+    copyAndFocus('请帮我一键生产全部【场景类素材】（' + parts + '）。\n场景素材不需要透明化处理，直接生产即可：\n读取 素材库/assets.json，对场景背景类素材使用 produce-skill 的 asset-generate.js --type 12 批量生产，\n生产完成后同步更新 素材库/materials.json、素材库/preview.html 中对应条目的 url 字段，并写入 asset-urls.ts。', '场景类素材');
+  } else if (cat === 'prop') {
+    copyAndFocus('请帮我一键生产全部【道具类素材】并完成透明化处理（' + parts + '）。\n道具素材需要透明背景，完整流程：\n1. 读取 素材库/assets.json，对道具/工具/特效/UI类素材使用 produce-skill 的 asset-generate.js --type 12 批量文生图\n2. 将生成的图片下载到 素材库/download/ 目录\n3. 使用 transparent-bg-skill 批量去背景透明化\n4. 使用 upload-skill 将透明化后的图片上传到 CS，获取 CDN URL\n5. 同步更新 素材库/materials.json、素材库/preview.html 中对应条目的 url 字段，并写入 asset-urls.ts', '道具类素材');
+  } else if (cat === 'tts') {
+    copyAndFocus('请帮我一键生产全部【TTS语音】（' + parts + '）。\n读取 素材库/assets.json 中 type 21 的 TTS 数据，使用 produce-skill 的 asset-generate.js --type 21 执行批量生产，\n生产完成后同步更新 素材库/tts.json 和 素材库/preview.html 中对应条目的 url 字段。', 'TTS语音');
+  }
+}
+
+// ═══ 素材生产线面板 ═══
+function renderPipeline() {
+  var R = 45, C = 2 * Math.PI * R;
+  var cats = [
+    {
+      key: 'scene', icon: '📸', label: '场景素材',
+      steps: ['文生图','完成'],
+      cardClass: 'scene-card', ringClass: 'scene-ring', pctClass: 'scene-clr',
+      btnStyle: 'background:rgba(78,205,196,0.08);color:var(--green);border-color:rgba(78,205,196,0.3)',
+      items: SCENES,
+    },
+    {
+      key: 'prop', icon: '🎭', label: '道具素材',
+      steps: ['文生图','下载','去背景','上传CS','完成'],
+      cardClass: 'prop-card', ringClass: 'prop-ring', pctClass: 'prop-clr',
+      btnStyle: 'background:rgba(245,166,35,0.08);color:var(--gold);border-color:rgba(245,166,35,0.3)',
+      items: ALL_PROPS,
+    },
+    {
+      key: 'tts', icon: '🎙️', label: 'TTS 语音',
+      steps: ['语音合成','完成'],
+      cardClass: 'tts-card', ringClass: 'tts-ring', pctClass: 'tts-clr',
+      btnStyle: 'background:rgba(167,139,250,0.08);color:#a78bfa;border-color:rgba(167,139,250,0.3)',
+      items: TTS,
+    },
+  ];
+
+  var totalDone = 0, totalAll = 0;
+  var cards = cats.map(function(c) {
+    var done = c.items.filter(function(i) { return !!i.url; }).length;
+    var all = c.items.length;
+    totalDone += done; totalAll += all;
+    var pct = all ? Math.round(done / all * 100) : 100;
+    var offset = C - (C * pct / 100);
+    var isComplete = done === all;
+    var stepsHtml = c.steps.map(function(s, i) {
+      return (i > 0 ? '<span class="step-arrow">→</span>' : '') + s;
+    }).join('');
+    var actionHtml = '<button class="produce-btn" style="'+c.btnStyle+'" onclick="produceByCategory(\''+c.key+'\')"><span class="icon">▶</span> '+(isComplete?'重新生产':'生产')+'</button>';
+    return '<div class="pl-card '+c.cardClass+(isComplete?' complete':'')+'">' +
+      '<div class="ring-wrap"><svg viewBox="0 0 100 100"><circle class="ring-bg" cx="50" cy="50" r="'+R+'"/><circle class="ring-fill '+c.ringClass+'" cx="50" cy="50" r="'+R+'" stroke-dasharray="'+C+'" stroke-dashoffset="'+offset+'"/></svg><div class="ring-center"><span class="ring-pct '+c.pctClass+'">'+pct+'%</span><span class="ring-sub">'+done+'/'+all+'</span></div></div>' +
+      '<div class="pl-card-label">'+c.icon+' '+c.label+'</div><div class="pl-card-steps">'+stepsHtml+'</div><div class="pl-card-action">'+actionHtml+'</div></div>';
+  }).join('');
+
+  var totalPct = totalAll ? Math.round(totalDone / totalAll * 100) : 100;
+  var allComplete = totalDone === totalAll;
+  var footerBtn = '<button class="produce-btn all-btn" onclick="produceAll()" style="font-size:14px;padding:8px 22px"><span class="icon">🚀</span> '+(allComplete?'重新生产全部':'一键生产全部')+'</button>';
+
+  document.getElementById('pipelinePanel').innerHTML =
+    '<div class="pipeline-header"><div class="pipeline-title"><span class="pipeline-title-icon">🏭</span> 素材生产线</div><div class="pipeline-total-badge">总进度 <span class="hl">'+totalDone+'</span>/<span>'+totalAll+'</span> · <span class="hl">'+totalPct+'%</span></div></div>' +
+    '<div class="pipeline-grid">'+cards+'</div>' +
+    '<div class="pipeline-footer-bar"><div class="pf-label">📊 总进度</div><div class="pf-bar-bg"><div class="pf-bar-fill" style="width:'+totalPct+'%"></div></div><div class="pf-count"><span class="done">'+totalDone+'</span><span class="sep"> / </span><span class="total">'+totalAll+'</span></div><div class="pf-btn">'+footerBtn+'</div></div>';
+}
+
+// ═══ 初始化 ═══
+renderPipeline();
+renderScenes();
+for (var g of PROP_GROUPS) {
+  renderPropGrid(g.items, g.gridId);
+}
+renderChars();
+renderBGM();
+renderTTS();
+
+// ═══ 导航栏：平滑滚动 + scroll-spy ═══
+function navTo(id) {
+  var el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+(function initNav() {
+  var navBar = document.getElementById('navBar');
+  var items = navBar.querySelectorAll('.nav-item');
+  var sectionIds = Array.from(items).map(function(btn) {
+    var onclick = btn.getAttribute('onclick') || '';
+    var m = onclick.match(/navTo\('(.+?)'\)/);
+    return m ? m[1] : null;
+  }).filter(Boolean);
+
+  function updateDots() {
+    var dotMap = {};
+    // scenes
+    dotMap['sec-scenes'] = { data: SCENES, type: 'url' };
+    // prop groups
+    for (var g of PROP_GROUPS) {
+      dotMap['sec-' + g.key] = { data: g.items, type: 'url' };
+    }
+    // tts
+    dotMap['sec-tts'] = { data: TTS, type: 'url' };
+
+    var globalDone = 0, globalTotal = 0;
+    items.forEach(function(btn) {
+      var dot = btn.querySelector('.nav-dot');
+      if (!dot) return;
+      var onclick = btn.getAttribute('onclick') || '';
+      var m = onclick.match(/navTo\('(.+?)'\)/);
+      if (!m) return;
+      var id = m[1];
+      var info = dotMap[id];
+      if (!info) { dot.className = 'nav-dot empty'; return; }
+      var done = info.data.filter(function(d) { return !!d.url; }).length;
+      var total = info.data.length;
+      globalDone += done; globalTotal += total;
+      if (total === 0) dot.className = 'nav-dot empty';
+      else if (done === total) dot.className = 'nav-dot done';
+      else if (done > 0) dot.className = 'nav-dot partial';
+      else dot.className = 'nav-dot empty';
+    });
+    var pipeBtn = items[0];
+    var pDot = pipeBtn ? pipeBtn.querySelector('.nav-dot') : null;
+    if (pDot) {
+      if (globalTotal === 0) pDot.className = 'nav-dot empty';
+      else if (globalDone === globalTotal) pDot.className = 'nav-dot done';
+      else if (globalDone > 0) pDot.className = 'nav-dot partial';
+      else pDot.className = 'nav-dot empty';
+    }
+    var pctVal = globalTotal ? Math.round(globalDone / globalTotal * 100) : 0;
+    var fill = document.querySelector('#navProgress .nav-progress-fill');
+    if (fill) fill.style.width = pctVal + '%';
+  }
+  updateDots();
+
+  var ticking = false;
+  window.addEventListener('scroll', function() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(function() {
+      var scrollY = window.scrollY + 60;
+      var activeIdx = 0;
+      for (var i = sectionIds.length - 1; i >= 0; i--) {
+        var sec = document.getElementById(sectionIds[i]);
+        if (sec && sec.offsetTop <= scrollY) { activeIdx = i; break; }
+      }
+      items.forEach(function(btn, j) {
+        btn.classList.toggle('active', j === activeIdx);
+      });
+      ticking = false;
+    });
+  }, { passive: true });
+})();
+</script>
+</body>
+</html>
