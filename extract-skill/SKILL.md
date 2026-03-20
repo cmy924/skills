@@ -158,27 +158,23 @@ node .claude/skills/preview-skill/scripts/generate-preview.cjs --open
 
 ### 第五步：上传预览页并更新 Debug 面板
 
-每次生成或更新 `素材库/preview.html` 后，必须执行以下步骤：
+预览页生成、上传、更新 Debug 面板的完整流程已委托给 `preview-skill`。
 
-**5a. 上传到 CS 获取 CDN URL：**
+运行以下命令生成并打开预览页：
+
+```bash
+node .claude/skills/preview-skill/scripts/generate-preview.cjs --open
+```
+
+上传到 CS 获取 CDN URL：
 
 ```bash
 bun --env-file=.claude/.env run .claude/skills/upload-skill/scripts/upload.js "./素材库/preview.html" --json
 ```
 
-从输出中提取 `downloadUrl`（格式如 `https://gcdncs.101.com/v0.1/download?dentryId=xxx`）。
+从输出中提取 `downloadUrl`，更新到 `public/exampleParams.json` 的 `materialWorkshopUrl` 字段。
 
-**5b. 更新 `index.tsx` 中 Debug 面板的AI素材工坊链接：**
-
-找到 `{/* AI素材工坊 */}` 区域的按钮或存储 URL 逻辑，将地址更新为新的 CDN URL。
-
-> ⚠️ 这两步是必须的，否则 Debug 面板的「打开AI素材工坊」按钮会指向过期地址。
-
-**5c. 打开预览：**
-
-```bash
-Start-Process "素材库/preview.html"
-```
+详见 `preview-skill/SKILL.md` 和 `debug-skill/SKILL.md`。
 
 ---
 

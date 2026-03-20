@@ -345,6 +345,7 @@ function buildCharacters() {
 // ─── 角色音色查找（优先 TTS 数据驱动，fallback 读 roles-skill） ───
 
 // 从 roles-skill/SKILL.md 解析 TTS 音色配置表作为 fallback
+// FIX: 同时按角色ID和中文名建索引，因为 tts.json 的 roleTTS.role 可能是中文名
 function loadRolesSkillVoiceConfig() {
   const rolesSkillPath = path.join(__dirname, '..', '..', 'roles-skill', 'SKILL.md');
   if (!fs.existsSync(rolesSkillPath)) return {};
@@ -355,7 +356,9 @@ function loadRolesSkillVoiceConfig() {
   for (const row of rows) {
     const m = row.match(/\|\s*`(\w+)`\s*\|\s*([^\|]+?)\s*\|\s*`(\d+)`\s*\|\s*`(\d+)`\s*\|\s*([^\|]+?)\s*\|/);
     if (m) {
-      map[m[1]] = { model: parseInt(m[3]), ref_audio: parseInt(m[4]), voiceDesc: m[5].trim() };
+      const entry = { model: parseInt(m[3]), ref_audio: parseInt(m[4]), voiceDesc: m[5].trim() };
+      map[m[1]] = entry;                // 按角色ID索引: xiao_an, narrator
+      map[m[2].trim()] = entry;         // 按中文名索引: 小安, 旁白
     }
   }
   return map;
@@ -453,37 +456,42 @@ function buildTTS() {
     }
   }
 
-  // narratorTTS
+  // FIX: roles-skill 音色配置作为 fallback，解决新项目没有 assets.json 时模型/音色显示为"—"的问题
+  const rolesVoice = getRolesVoiceConfig();
+
+  // narratorTTS — fallback 到 roles-skill 的 narrator 配置
+  const narratorFallback = rolesVoice['narrator'] || rolesVoice['旁白'] || {};
   for (const t of (ttsData.narratorTTS || [])) {
     const cfg = ttsConfig[t.id] || {};
     tts.push({
       role: 'narrator',
       name: t.id,
       stage: t.scene || '',
-      model: cfg.model || null,
-      ref_audio: cfg.ref_audio || null,
+      model: cfg.model || narratorFallback.model || null,
+      ref_audio: cfg.ref_audio || narratorFallback.ref_audio || null,
       content: t.text,
       url: t.url || '',
     });
   }
 
-  // roleTTS
+  // roleTTS — fallback 到 roles-skill 对应角色的配置
   for (const roleGroup of (ttsData.roleTTS || [])) {
+    const roleFallback = rolesVoice[roleGroup.role] || {};
     for (const t of (roleGroup.lines || [])) {
       const cfg = ttsConfig[t.id] || {};
       tts.push({
         role: roleGroup.role || 'unknown',
         name: t.id,
         stage: t.scene || '',
-        model: cfg.model || null,
-        ref_audio: cfg.ref_audio || null,
+        model: cfg.model || roleFallback.model || null,
+        ref_audio: cfg.ref_audio || roleFallback.ref_audio || null,
         content: t.text,
         url: t.url || '',
       });
     }
   }
 
-  // uiTTS（计时魔法等项目有 UI 音效 TTS）
+  // uiTTS — 无角色音色 fallback
   for (const t of (ttsData.uiTTS || [])) {
     const cfg = ttsConfig[t.id] || {};
     tts.push({
@@ -498,6 +506,74 @@ function buildTTS() {
   }
 
   return tts;
+}
+
+// ─── 加载音效参考库（ai-sounds/references/sounds.md）───
+function loadSoundsReference() {
+  const soundsRef = {};
+  const refPath = path.join(__dirname, '..', '..', 'ai-sounds', 'references', 'sounds.md');
+  if (!fs.existsSync(refPath)) return soundsRef;
+  const content = fs.readFileSync(refPath, 'utf-8');
+  let currentCategory = '';
+  for (const line of content.split('\n')) {
+    const catMatch = line.match(/^###\s+(.+)/);
+    if (catMatch) { currentCategory = catMatch[1].trim(); continue; }
+    const rowMatch = line.match(/^\|\s*(\w[\w-]*\w?)\s*\|\s*([^|]+)\s*\|\s*([^|]*)\s*\|/);
+    if (rowMatch && rowMatch[1] !== 'id' && rowMatch[1] !== '---') {
+      soundsRef[rowMatch[1].trim()] = {
+        name: rowMatch[2].trim(),
+        description: rowMatch[3].trim(),
+        category: currentCategory,
+      };
+    }
+  }
+  return soundsRef;
+}
+
+// ─── 构建音效数据（从 index.tsx 提取 ai-sounds 使用情况）───
+function buildSoundEffects() {
+  if (!indexSource) return [];
+  const soundsRef = loadSoundsReference();
+
+  // 扫描 soundLibrary.play('xxx') 调用
+  const regex = /soundLibrary\.play\(['"]([\w-]+)['"]\)/g;
+  const usageMap = {};
+  let match;
+  while ((match = regex.exec(indexSource)) !== null) {
+    const id = match[1];
+    if (!usageMap[id]) usageMap[id] = { count: 0, contexts: [] };
+    usageMap[id].count++;
+  }
+
+  // 提取使用上下文
+  const lines = indexSource.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const lineRegex = /soundLibrary\.play\(['"]([\w-]+)['"]\)/g;
+    let lm;
+    while ((lm = lineRegex.exec(lines[i])) !== null) {
+      const id = lm[1];
+      if (usageMap[id]) {
+        let ctx = lines[i].trim();
+        if (ctx.length > 120) ctx = ctx.substring(0, 120) + '...';
+        usageMap[id].contexts.push({ line: i + 1, code: ctx });
+      }
+    }
+  }
+
+  const effects = [];
+  for (const [id, usage] of Object.entries(usageMap)) {
+    const ref = soundsRef[id] || {};
+    effects.push({
+      id,
+      name: ref.name || id,
+      description: ref.description || '',
+      category: ref.category || '未分类',
+      count: usage.count,
+      contexts: usage.contexts,
+    });
+  }
+
+  return effects.sort((a, b) => b.count - a.count);
 }
 
 // ─── 构建导航栏 HTML ───
@@ -530,6 +606,7 @@ function buildNavItems(scenes, propGroups) {
   html += '  <div class="nav-items">\n';
   html += '    <button class="nav-item" onclick="navTo(\'sec-chars\')"><span class="nav-icon">🧑‍🎓</span>角色</button>\n';
   html += '    <button class="nav-item" onclick="navTo(\'sec-bgm\')"><span class="nav-icon">🎵</span>BGM</button>\n';
+  html += '    <button class="nav-item" onclick="navTo(\'sec-sfx\')"><span class="nav-icon">🔊</span>音效</button>\n';
   html += '    <button class="nav-item" onclick="navTo(\'sec-tts\')"><span class="nav-icon">🗣️</span>TTS<span class="nav-dot empty"></span></button>\n';
   html += '  </div>\n';
 
@@ -545,27 +622,128 @@ function buildLevelsHTML() {
       return '<div class="section" id="sec-levels">' + levelsMatch[1] + '</div>';
     }
   }
-  // 自动生成简单的关卡占位
-  const levelScenes = materials.materialProfile?.levelScenes || [];
+
+  const profile = materials.materialProfile || {};
+  const levelScenes = profile.levelScenes || [];
+  const levelProps = profile.levelProps || {};
+  const feedbackProps = profile.feedbackProps || [];
+  // 计时魔法等项目可能还有 uiProps
+  const uiProps = profile.uiProps || [];
+  const allArtItems = (materials.artChecklist?.deployed?.items || [])
+    .concat(materials.artChecklist?.planned?.items || [])
+    .concat(materials.artChecklist?.uiFromManifest?.items || []);
+
   if (!levelScenes.length) {
     return '<div class="section" id="sec-levels">\n  <h2 class="section-title">游戏关卡</h2>\n  <p style="color:var(--muted)">暂无关卡数据，请在 extract-skill 中配置</p>\n</div>';
   }
 
-  let html = '<div class="section" id="sec-levels">\n';
-  html += '  <h2 class="section-title">游戏关卡 (' + levelScenes.length + ')</h2>\n';
-  html += '  <div class="grid grid-levels">\n';
+  // 将 levelScenes 按关卡号分组
+  const levelGroups = {};
+  for (const s of levelScenes) {
+    const m = s.materialId?.match(/LEVEL(\d+)/i) || s.name?.match(/关卡(\d)/);
+    const levelNum = m ? parseInt(m[1]) : 0;
+    if (!levelGroups[levelNum]) levelGroups[levelNum] = { scenes: [], num: levelNum };
+    levelGroups[levelNum].scenes.push(s);
+  }
+  const sortedLevels = Object.values(levelGroups).sort((a, b) => a.num - b.num);
+
+  // 收集每关出现的道具（从 levelProps 的 usage 字段推断）
+  function getPropsForLevel(levelNum) {
+    const props = [];
+    for (const [groupKey, items] of Object.entries(levelProps)) {
+      for (const p of items) {
+        const usage = (p.usage || '').toLowerCase();
+        const usesInLevel =
+          /所有关卡|全关卡|核心|全部/.test(usage) ||
+          new RegExp('关卡' + levelNum + '(?!\\+|及)').test(usage) ||
+          new RegExp('l' + levelNum + '(?!\\+)', 'i').test(usage) ||
+          (levelNum >= 2 && /关卡2\+|关卡2及以上|l2\+/i.test(usage)) ||
+          (levelNum >= 3 && /关卡3\+|关卡3及以上|l3\+/i.test(usage));
+        if (usesInLevel) {
+          props.push({ name: p.name, emoji: p.emoji || guessPropIcon(p.name, p.category), category: p.category });
+        }
+      }
+    }
+    // 也检查 feedbackProps 和 uiProps
+    for (const p of feedbackProps.concat(uiProps)) {
+      const usage = (p.usage || '').toLowerCase();
+      const usesInLevel =
+        /所有关卡|全关卡|通用/.test(usage) ||
+        new RegExp('关卡' + levelNum).test(usage);
+      if (usesInLevel) {
+        props.push({ name: p.name, emoji: p.emoji || guessPropIcon(p.name, p.category), category: p.category || 'ui' });
+      }
+    }
+    return props;
+  }
+
   const colors = ['#4ecdc4', '#f5a623', '#ff6b6b', '#a78bfa', '#4ecdc4'];
-  for (let i = 0; i < levelScenes.length; i++) {
-    const s = levelScenes[i];
-    const color = colors[i % colors.length];
+  const difficulties = ['⭐ 简单', '⭐⭐ 中等', '⭐⭐⭐ 困难', '⭐⭐⭐⭐ 极难', '⭐⭐⭐⭐⭐ 地狱'];
+
+  let html = '<div class="section" id="sec-levels">\n';
+  html += '  <h2 class="section-title">游戏关卡 (' + sortedLevels.length + ')</h2>\n';
+  html += '  <div class="grid grid-levels">\n';
+
+  for (let idx = 0; idx < sortedLevels.length; idx++) {
+    const group = sortedLevels[idx];
+    const color = colors[idx % colors.length];
+    const mainScene = group.scenes[0];
+    const levelNum = group.num;
+
+    // 提取关卡名和副标题
+    const rawName = mainScene.name || ('关卡' + levelNum);
+    // 去掉 "关卡N背景 — " 或 "关卡N背景—" 前缀，提取真正的场景名
+    const sceneName = rawName.replace(/^关卡\d+背景\s*[—\-]\s*/, '');
+    const displayName = '关卡' + levelNum + (sceneName !== rawName ? ' — ' + sceneName : '');
+
+    // 背景缩略图
+    const bgUrl = mainScene.remoteUrl || null;
+    const bgThumb = bgUrl ? '<div class="level-bg-thumb" style="background-image:url(\'' + bgUrl + '\')"></div>' : '';
+
+    // 步骤场景（同一关卡多个 scene）
+    let stepsInfo = '';
+    if (group.scenes.length > 1) {
+      const stepNames = group.scenes.map(s => {
+        const stepMatch = s.materialId?.match(/STEP(\d+)/i) || s.name?.match(/step\s*(\d+)/i);
+        return stepMatch ? 'step' + stepMatch[1] : s.name;
+      });
+      stepsInfo = '<p class="level-steps-info">' + stepNames[0] + ' ~ ' + stepNames[stepNames.length - 1] + ' 共' + group.scenes.length + '个步骤场景</p>';
+    }
+
+    // 本关出现的道具
+    const levelPropsList = getPropsForLevel(levelNum);
+    let propsHtml = '';
+    if (levelPropsList.length > 0) {
+      propsHtml = '<h4>出现元素</h4>\n        <div class="level-tags">\n';
+      for (const p of levelPropsList) {
+        const tagClass = p.category === 'prop' ? 'fish' : (p.category === 'ui' ? 'mechanic' : 'mechanic');
+        propsHtml += '          <span class="level-tag ' + tagClass + '">' + p.emoji + ' ' + p.name + '</span>\n';
+      }
+      propsHtml += '          <span class="level-tag difficulty">' + (difficulties[idx] || difficulties[difficulties.length - 1]) + '</span>\n';
+      propsHtml += '        </div>';
+    }
+
+    // 用途说明
+    const usageText = mainScene.usage || '';
+
     html += '    <div class="level-card" style="border-top: 3px solid ' + color + '">\n';
+    html += '      ' + bgThumb + '\n';
     html += '      <div class="level-header">\n';
-    html += '        <span class="level-icon">' + guessIcon(s.name) + '</span>\n';
-    html += '        <div><div class="level-name">' + s.name + '</div></div>\n';
+    html += '        <span class="level-icon">' + guessIcon(mainScene.name) + '</span>\n';
+    html += '        <div>\n';
+    html += '          <div class="level-name">' + displayName + '</div>\n';
+    if (usageText) {
+      html += '          <div class="level-subtitle">' + usageText + '</div>\n';
+    }
+    html += '        </div>\n';
     html += '      </div>\n';
-    html += '      <div class="level-body"><p style="color:var(--muted);font-size:13px">' + (s.usage || '') + '</p></div>\n';
+    html += '      <div class="level-body">\n';
+    if (stepsInfo) html += '        ' + stepsInfo + '\n';
+    if (propsHtml) html += '        ' + propsHtml + '\n';
+    html += '      </div>\n';
     html += '    </div>\n';
   }
+
   html += '  </div>\n</div>';
   return html;
 }
@@ -624,6 +802,17 @@ function buildSectionsHTML(propGroups) {
   html += '  <div class="grid grid-audio" id="bgmGrid"></div>\n';
   html += '</div>\n\n';
 
+  // 音效（ai-sounds 库）
+  html += '<div class="section" id="sec-sfx">\n';
+  html += '  <h2 class="section-title">🔊 交互音效 <span style="font-size:12px;color:var(--muted);font-weight:400">（ai-sounds 音效库）</span></h2>\n';
+  html += '  <div class="table-wrap">\n';
+  html += '    <table class="tts-table" id="sfxTable">\n';
+  html += '      <thead><tr><th style="width:40px">#</th><th style="width:120px">音效 ID</th><th style="width:150px">名称</th><th style="width:100px">分类</th><th>描述</th><th style="width:60px">使用</th><th style="width:80px">试听</th></tr></thead>\n';
+  html += '      <tbody></tbody>\n';
+  html += '    </table>\n';
+  html += '  </div>\n';
+  html += '</div>\n\n';
+
   // TTS
   html += '<div class="section" id="sec-tts">\n';
   html += '  <h2 class="section-title">TTS 语音 <button class="produce-btn tts-btn" onclick="produceSection(\'tts\')"><span class="icon">🎙️</span> 生产TTS</button><button class="refresh-btn" onclick="location.reload()"><span class="icon">🔄</span> 刷新</button></h2>\n';
@@ -645,12 +834,13 @@ function generate() {
   const characters = buildCharacters();
   const bgms = buildBGMs();
   const tts = buildTTS();
+  const soundEffects = buildSoundEffects();
   const navItems = buildNavItems(scenes, propGroups);
   const levelsHTML = buildLevelsHTML();
   const sectionsHTML = buildSectionsHTML(propGroups);
 
   // 角色名映射
-  const roleNames = { narrator: '旁白', ui: 'UI音效' };
+  const roleNames = { narrator: '旁白', ui: 'UI语音' };
   for (const c of characters) {
     roleNames[c.id] = c.name;
   }
@@ -702,6 +892,7 @@ function generate() {
   output = output.replace(/\{\{NARRATOR_VOICE_DATA\}\}/g, jsonStr(narratorVoice));
   output = output.replace(/\{\{BGMS_DATA\}\}/g, jsonStr(bgms));
   output = output.replace(/\{\{TTS_DATA\}\}/g, jsonStr(tts));
+  output = output.replace(/\{\{SOUND_EFFECTS_DATA\}\}/g, jsonStr(soundEffects));
   output = output.replace(/\{\{ROLE_NAMES_DATA\}\}/g, jsonStr(roleNames));
 
   // 写入文件
@@ -715,6 +906,7 @@ function generate() {
   console.log('   角色:', characters.length, '个');
   console.log('   BGM:', bgms.length, '条');
   console.log('   TTS:', tts.length, '条');
+  console.log('   音效:', soundEffects.length, '种 (ai-sounds)');
 
   if (autoOpen) {
     const { exec } = require('child_process');

@@ -561,34 +561,49 @@ const [isDevMode] = useState<boolean>(() => {
 
 ### 3.4 渲染面板（🔧 以下为游戏定制部分）
 
-在 JSX 最外层 div 的末尾添加：
+在 JSX 最外层 div 的末尾添加。**核心原则：分层组织、职责单一、状态丰富**。
+
+> ⚠️ **常见反模式**：把所有步骤/关卡/页面跳转混在一个 buttons 区块里（如 `页面跳转: [开始, L1-S1, L1-S2a, ..., 结果]`）。
+> 正确做法：**关卡、页面/屏幕、状态分别用独立区块**，让面板清晰可读。
+
+#### 推荐结构（3 段式）：关卡 + 屏幕 + 状态
 
 ```tsx
 {/* ═══ Dev 调试面板 @custom-dev-panel ═══ */}
 {isDevMode && (
   <DevPanel
     sections={[
-      // ── 按钮组区块示例：关卡跳转 ──
+      // ─── 区块1：关卡跳转（仅关卡级别，不混入步骤）───
       {
         type: 'buttons',
         label: '关卡',
         buttons: LEVELS.map((lv, i) => ({
           label: `L${lv.level} ${lv.name}`,
           active: currentLevel === i && phase === 'playing',
-          action: () => startLevel(i)
+          action: () => startCountdown(i)         // 走正常游戏流程
         }))
       },
-      // ── 按钮组区块示例：屏幕/步骤切换 ──
+      // ─── 区块2：屏幕/阶段切换（列出所有 phase）───
+      // 关键：切换前调用 cleanupGame() 清理计时器、数组等残留状态
       {
         type: 'buttons',
         label: '屏幕',
         buttons: [
-          { label: '开始页', active: phase === 'start', action: () => goToPhase('start') },
-          { label: '游戏中', active: phase === 'playing', action: () => goToPhase('playing') },
-          { label: '结算', active: phase === 'result', action: () => goToPhase('result') }
+          { label: '开始页', active: phase === 'start',
+            action: () => { cleanupGame(); setPhase('start'); playBGM('main') } },
+          { label: '选关', active: phase === 'levels',
+            action: () => { cleanupGame(); setPhase('levels'); playBGM('main') } },
+          { label: '倒计时', active: phase === 'countdown',
+            action: () => startCountdown(currentLevel) },
+          { label: '游戏中', active: phase === 'playing',
+            action: () => startCountdown(currentLevel) },
+          { label: '游戏结束', active: phase === 'levelComplete' || phase === 'levelFail',
+            action: () => { cleanupGame(); setPhase('levelFail') } },
+          { label: '全通关', active: phase === 'gameComplete',
+            action: () => { cleanupGame(); setPhase('gameComplete') } }
         ]
       },
-      // ── 状态监控区块示例 ──
+      // ─── 区块3：状态监控（尽可能多展示关键指标）───
       {
         type: 'state',
         label: '状态',
@@ -596,7 +611,9 @@ const [isDevMode] = useState<boolean>(() => {
           { key: '屏幕', value: phase },
           { key: '关卡', value: `L${currentLevel + 1}` },
           { key: '得分', value: score },
-          { key: '时间', value: `${timeLeft}s` }
+          { key: '时间', value: `${timeLeft}s` },
+          { key: '鱼', value: fishRef.current.length },
+          { key: '星级', value: `L1=${levelStars[0]} L2=${levelStars[1]} L3=${levelStars[2]}` }
         ]
       }
     ] satisfies DevSection[]}
@@ -606,6 +623,58 @@ const [isDevMode] = useState<boolean>(() => {
     materialWorkshopUrl={props.params.materialWorkshopUrl}
   />
 )}
+```
+
+## 区块设计规范
+
+### 规范1：分层组织
+
+按关注点拆分为多个区块，**不要混在一起**：
+
+| 层级 | 区块类型 | 用途 | 示例 |
+|------|----------|------|------|
+| 导航层 | `buttons` | 关卡跳转 | `关卡: [L1 小溪] [L2 激流] [L3 瀑布]` |
+| 导航层 | `buttons` | 屏幕/阶段切换 | `屏幕: [开始页] [选关] [游戏中] [结算]` |
+| 数据层 | `state` | 游戏状态 | `屏幕: playing │ 得分: 5 │ 时间: 28s` |
+| 扩展层 | `custom` | 特殊控制 | 滑块、日志、自定义 UI |
+
+### 规范2：按钮必须有 cleanup
+
+屏幕切换按钮的 `action` 必须先清理游戏状态（停止计时器、清空数组等），否则跳转后残留的 interval/timeout 会导致错乱：
+
+```tsx
+// ✅ 正确：先清理再切换
+{ label: '开始页', action: () => { cleanupGame(); setPhase('start'); playBGM('main') } }
+
+// ❌ 错误：直接切换，计时器和状态残留
+{ label: '开始页', action: () => setPhase('start') }
+```
+
+### 规范3：状态条目尽量丰富
+
+`state` 区块应覆盖所有开发时需要观察的指标。常见条目：
+
+```tsx
+entries: [
+  { key: '屏幕', value: phase },           // 当前生命周期阶段
+  { key: '关卡', value: `L${level + 1}` }, // 当前关卡
+  { key: '步骤', value: `${step}/${total}` }, // 步骤进度（步骤制游戏）
+  { key: '得分', value: score },            // 分数
+  { key: '时间', value: `${timeLeft}s` },   // 剩余时间
+  { key: '错误', value: errorCount },       // 错误/失误次数
+  { key: '超时', value: isTimeout ? 'Y' : 'N' }, // 是否超时
+  { key: '生命', value: `${hp}/${maxHp}` }, // 生命值
+  { key: '实体', value: entities.length },  // 场上实体数量
+]
+```
+
+### 规范4：active 高亮当前状态
+
+每个按钮通过 `active` 属性标识当前激活项，面板中会以绿色高亮：
+
+```tsx
+{ label: '游戏中', active: phase === 'playing', action: () => ... }
+//                 ^^^^^^^ 当 phase 为 playing 时高亮
 ```
 
 ## 三种区块类型参考
@@ -657,6 +726,101 @@ const [isDevMode] = useState<boolean>(() => {
 }
 ```
 
+## 不同游戏类型的 sections 模板
+
+### 模板A：关卡制游戏（如捕鱼、消除、跑酷）
+
+特点：多关卡 + 每关有独立玩法循环
+
+```tsx
+sections={[
+  { type: 'buttons', label: '关卡',
+    buttons: LEVELS.map((lv, i) => ({
+      label: `L${lv.level} ${lv.name}`,
+      active: currentLevel === i,
+      action: () => startLevel(i)
+    }))
+  },
+  { type: 'buttons', label: '屏幕',
+    buttons: [
+      { label: '开始页', active: phase === 'start', action: () => { cleanup(); setPhase('start') } },
+      { label: '选关', active: phase === 'levels', action: () => { cleanup(); setPhase('levels') } },
+      { label: '游戏中', active: phase === 'playing', action: () => startLevel(currentLevel) },
+      { label: '通关', active: phase === 'complete', action: () => { cleanup(); setPhase('complete') } },
+      { label: '失败', active: phase === 'fail', action: () => { cleanup(); setPhase('fail') } },
+    ]
+  },
+  { type: 'state', label: '状态',
+    entries: [
+      { key: '屏幕', value: phase },
+      { key: '关卡', value: `L${currentLevel + 1}` },
+      { key: '得分', value: score },
+      { key: '时间', value: `${timeLeft}s` },
+    ]
+  }
+]}
+```
+
+### 模板B：步骤制课件（如分步教学、实验操作）
+
+特点：线性步骤推进 + 可能有多关卡 × 多步骤
+
+```tsx
+sections={[
+  { type: 'buttons', label: '页面跳转',
+    buttons: [
+      { label: '开始', active: page === 'start', action: () => goTo('start') },
+      // 每关每步独立按钮，按 L关卡-S步骤 格式
+      ...STEPS.flatMap(step => ({
+        label: step.shortLabel,   // 如 'L1-S1', 'L1-S2a'
+        active: currentStep === step.id,
+        action: () => jumpToStep(step.id)
+      })),
+      { label: '结果', active: page === 'result', action: () => goTo('result') }
+    ]
+  },
+  { type: 'state', label: '状态',
+    entries: [
+      { key: '页面', value: currentPage },
+      { key: '步骤', value: `${stepIndex + 1}/${totalSteps}` },
+      { key: '错误', value: errorCount },
+      { key: '超时', value: isTimeout ? 'Y' : 'N' },
+    ]
+  }
+]}
+```
+
+### 模板C：答题/选择类游戏（如问答、连线、排序）
+
+特点：题库驱动 + 答对/答错反馈
+
+```tsx
+sections={[
+  { type: 'buttons', label: '题目',
+    buttons: questions.map((q, i) => ({
+      label: `Q${i + 1}`,
+      active: currentQuestion === i,
+      action: () => jumpToQuestion(i)
+    }))
+  },
+  { type: 'buttons', label: '屏幕',
+    buttons: [
+      { label: '说明页', active: phase === 'intro', action: () => setPhase('intro') },
+      { label: '答题中', active: phase === 'quiz', action: () => setPhase('quiz') },
+      { label: '结算', active: phase === 'result', action: () => setPhase('result') },
+    ]
+  },
+  { type: 'state', label: '状态',
+    entries: [
+      { key: '题号', value: `${currentQuestion + 1}/${questions.length}` },
+      { key: '正确', value: correctCount },
+      { key: '错误', value: wrongCount },
+      { key: '得分', value: `${score}/${maxScore}` },
+    ]
+  }
+]}
+```
+
 ## 内置通用功能（无需配置）
 
 | 功能 | 描述 |
@@ -692,11 +856,13 @@ $r = bun --env-file=".claude\.env" run ".claude\skills\upload-skill\scripts\uplo
 ├──────────────────────────────────┤
 │ ┌ 游戏专属 sections（按顺序） ┐  │
 │ │ 关卡                         │  │
-│ │ [L1 xxx] [L2 xxx] [L3 xxx]  │  │  ← type: 'buttons'
+│ │ [L1 小溪] [L2 激流] [L3 瀑布]│  │  ← type: 'buttons'
 │ │ 屏幕                         │  │
-│ │ [开始页] [游戏中] [结算]     │  │  ← type: 'buttons'
+│ │ [开始页] [选关] [游戏中]     │  │  ← type: 'buttons'
+│ │ [游戏结束] [全通关]          │  │
 │ │ 状态                         │  │
-│ │ 屏幕: playing | 得分: 5      │  │  ← type: 'state'
+│ │ 屏幕: playing | 关卡: L1     │  │  ← type: 'state'
+│ │ 得分: 5 | 时间: 28s | 鱼: 3 │  │
 │ └──────────────────────────────┘  │
 │ ┌ 通用内置（自动渲染） ───────┐  │
 │ │ 背景音乐                     │  │
@@ -719,3 +885,5 @@ $r = bun --env-file=".claude\.env" run ".claude\skills\upload-skill\scripts\uplo
 4. 面板层级 z-index: 9999
 5. **所有标签用中文**
 6. **materialWorkshopUrl 格式** — 使用 `?dentryId=xxx`（不带 `attachment=true`），浏览器直接打开
+7. **分层设计 sections**：关卡导航 + 屏幕切换 + 状态监控，不要混成一个大按钮组
+8. **屏幕切换按钮必须先 cleanup**：停计时器、清数组、停音频，再切换 phase

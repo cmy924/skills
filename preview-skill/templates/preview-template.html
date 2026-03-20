@@ -833,6 +833,14 @@
   .tts-status.pending { background: #333; color: var(--orange); }
   .tts-status.ready { background: #1a3a2a; color: var(--green); }
 
+  /* ─── 音效区块 ─── */
+  .sfx-cat-tag { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px; background: rgba(78,205,196,0.12); color: var(--green); }
+  .sfx-count { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: rgba(245,166,35,0.12); color: var(--orange); font-weight: 600; }
+  .sfx-play-btn { background: rgba(167,139,250,0.12); border: 1px solid rgba(167,139,250,0.3); color: #a78bfa; border-radius: 6px; padding: 3px 12px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+  .sfx-play-btn:hover { background: rgba(167,139,250,0.25); }
+  .sfx-play-btn:active { transform: scale(0.95); }
+  .sfx-play-btn.playing { background: rgba(167,139,250,0.3); color: #c4b5fd; }
+
   .img-error { color: var(--red); font-size: 12px; text-align: center; padding: 16px; }
 
   /* ─── 关卡概览 ─── */
@@ -847,6 +855,13 @@
   .level-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+  .level-bg-thumb {
+    width: 100%;
+    height: 120px;
+    background-size: cover;
+    background-position: center;
+    border-bottom: 1px solid var(--border);
   }
   .level-header {
     padding: 16px 20px;
@@ -884,6 +899,15 @@
     color: var(--green);
     font-weight: 700;
   }
+  .level-steps-info {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 10px;
+    padding: 4px 8px;
+    background: rgba(78,205,196,0.08);
+    border-radius: 6px;
+    border-left: 2px solid var(--green);
+  }
   .level-tag {
     display: inline-block;
     font-size: 10px;
@@ -891,6 +915,7 @@
     border-radius: 999px;
     font-weight: 600;
     margin-right: 4px;
+    margin-bottom: 4px;
   }
   .level-tag.fish { background: rgba(78,205,196,0.15); color: var(--green); }
   .level-tag.mechanic { background: rgba(245,166,35,0.15); color: var(--orange); }
@@ -1023,6 +1048,7 @@ const NARRATOR_VOICE = {{NARRATOR_VOICE_DATA}};
 const BGMS = {{BGMS_DATA}};
 const TTS = {{TTS_DATA}};
 const ROLE_NAMES = {{ROLE_NAMES_DATA}};
+const SOUND_EFFECTS = {{SOUND_EFFECTS_DATA}};
 const WORKSPACE_PATH = '{{WORKSPACE_PATH}}';
 
 // ═══ 从 PROP_GROUPS 展开所有道具项 ═══
@@ -1049,9 +1075,10 @@ function togglePrompt(el) {
   const wrap = toolbar.nextElementSibling;
   const isOpen = wrap.classList.toggle('show');
   toolbar.classList.toggle('open', isOpen);
-  el.textContent = isOpen ? '▼ 编辑 Prompt' : '▶ 编辑 Prompt';
+  const ta = wrap.querySelector('textarea');
+  const hasPrompt = ta && ta.value.trim().length > 0;
+  el.textContent = isOpen ? (hasPrompt ? '▼ 编辑 Prompt' : '▼ 添加 Prompt') : (hasPrompt ? '▶ 编辑 Prompt' : '▶ 添加 Prompt');
   if (isOpen) {
-    const ta = wrap.querySelector('textarea');
     if (!ta._listening) {
       ta._listening = true;
       const origVal = ta.value;
@@ -1059,6 +1086,7 @@ function togglePrompt(el) {
         ta.classList.toggle('prompt-changed', ta.value !== origVal);
       });
     }
+    ta.focus();
   }
 }
 
@@ -1199,7 +1227,7 @@ function renderScenes() {
         '<div class="card-title">'+s.name+'</div>'+
         '<div class="card-id">'+s.id+'</div>'+
         '<div class="card-meta">'+s.spec+'</div>'+
-        (s.prompt?'<div class="prompt-toolbar" id="pt_'+s.id+'"><span class="prompt-toggle" onclick="togglePrompt(this)">▶ 编辑 Prompt</span><span class="prompt-saved-tip"></span><div class="prompt-actions"><button class="prompt-btn" onclick="copyPrompt(this)">📋 复制</button><button class="prompt-btn reproduce" onclick="openResetPromptModal(this)">🔄 重新生产</button></div></div><div class="prompt-wrap"><textarea class="prompt-text" data-id="'+s.id+'" spellcheck="false">'+s.prompt+'</textarea></div>':'')+
+        '<div class="prompt-toolbar" id="pt_'+s.id+'"><span class="prompt-toggle" onclick="togglePrompt(this)">'+(s.prompt?'▶ 编辑 Prompt':'▶ 添加 Prompt')+'</span><span class="prompt-saved-tip"></span><div class="prompt-actions"><button class="prompt-btn" onclick="copyPrompt(this)">📋 复制</button><button class="prompt-btn reproduce" onclick="openResetPromptModal(this)">🔄 重新生产</button></div></div><div class="prompt-wrap"><textarea class="prompt-text" data-id="'+s.id+'" spellcheck="false" placeholder="输入文生图 Prompt...">'+(s.prompt||'')+'</textarea></div>'+
       '</div></div>';
   }).join('');
 }
@@ -1223,7 +1251,7 @@ function renderPropGrid(data, gridId) {
         '<div class="card-title">'+p.name+'</div>'+
         '<div class="card-id">'+p.id+'</div>'+
         '<div class="card-meta">'+p.spec+'</div>'+
-        (p.prompt?'<div class="prompt-toolbar" id="pt_'+p.id+'"><span class="prompt-toggle" onclick="togglePrompt(this)">▶ 编辑 Prompt</span><span class="prompt-saved-tip"></span><div class="prompt-actions"><button class="prompt-btn" onclick="copyPrompt(this)">📋 复制</button><button class="prompt-btn reproduce" onclick="openResetPromptModal(this)">🔄 重新生产</button></div></div><div class="prompt-wrap"><textarea class="prompt-text" data-id="'+p.id+'" spellcheck="false">'+p.prompt+'</textarea></div>':'')+
+        '<div class="prompt-toolbar" id="pt_'+p.id+'"><span class="prompt-toggle" onclick="togglePrompt(this)">'+(p.prompt?'▶ 编辑 Prompt':'▶ 添加 Prompt')+'</span><span class="prompt-saved-tip"></span><div class="prompt-actions"><button class="prompt-btn" onclick="copyPrompt(this)">📋 复制</button><button class="prompt-btn reproduce" onclick="openResetPromptModal(this)">🔄 重新生产</button></div></div><div class="prompt-wrap"><textarea class="prompt-text" data-id="'+p.id+'" spellcheck="false" placeholder="输入文生图 Prompt...">'+(p.prompt||'')+'</textarea></div>'+
       '</div></div>';
   }).join('');
 }
@@ -1290,6 +1318,64 @@ function renderTTS() {
       '<td><span class="tts-status '+(t.url?'ready':'pending')+'">'+(t.url?'已生产':'待生产')+'</span></td>'+
     '</tr>';
   }).join('');
+}
+
+function renderSoundEffects() {
+  var tbody = document.querySelector('#sfxTable tbody');
+  if (!tbody || !SOUND_EFFECTS.length) {
+    // 如果没有音效数据，显示提示
+    var sec = document.getElementById('sec-sfx');
+    if (sec && !SOUND_EFFECTS.length) {
+      sec.querySelector('.table-wrap').innerHTML = '<p style="color:var(--muted);padding:16px">未检测到 ai-sounds 音效使用（未找到 soundLibrary.play() 调用）</p>';
+    }
+    return;
+  }
+  tbody.innerHTML = SOUND_EFFECTS.map(function(s,i) {
+    var ctxHtml = s.contexts.slice(0, 3).map(function(c) {
+      return '<span style="font-size:10px;color:var(--muted)" title="' + c.code.replace(/"/g, '&quot;') + '">L' + c.line + '</span>';
+    }).join(' ');
+    return '<tr>' +
+      '<td>' + (i+1) + '</td>' +
+      '<td style="font-family:Consolas,monospace;font-size:12px;color:#a78bfa">' + s.id + '</td>' +
+      '<td>' + s.name + '</td>' +
+      '<td><span class="sfx-cat-tag">' + s.category + '</span></td>' +
+      '<td style="font-size:12px;color:var(--muted)">' + (s.description || '—') + '</td>' +
+      '<td><span class="sfx-count">×' + s.count + '</span> ' + ctxHtml + '</td>' +
+      '<td><button class="sfx-play-btn" onclick="playSfx(\'' + s.id + '\', this)">▶</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+// 音效试听（动态加载 ai-sounds 库）
+var _sfxLib = null;
+var _sfxLoading = false;
+async function playSfx(id, btn) {
+  if (!_sfxLib && !_sfxLoading) {
+    _sfxLoading = true;
+    btn.textContent = '⏳';
+    try {
+      var mod = await import('https://esm.sh/ai-sounds');
+      _sfxLib = mod.default || mod;
+    } catch(e) {
+      console.warn('ai-sounds CDN 不可用:', e);
+      showToast('⚠️ 音效库加载失败，可在开发环境中测试', 3000);
+      _sfxLoading = false;
+      btn.textContent = '▶';
+      return;
+    }
+    _sfxLoading = false;
+  }
+  if (!_sfxLib) { showToast('⚠️ 音效库加载中…', 1500); return; }
+  btn.classList.add('playing');
+  btn.textContent = '⏸';
+  try {
+    await _sfxLib.play(id);
+  } catch(e) {
+    console.warn('播放失败:', id, e);
+    showToast('⚠️ 播放失败: ' + id, 2000);
+  }
+  btn.classList.remove('playing');
+  btn.textContent = '▶';
 }
 
 // ═══ 生产命令系统 ═══
@@ -1473,6 +1559,7 @@ for (var g of PROP_GROUPS) {
 renderChars();
 renderBGM();
 renderTTS();
+renderSoundEffects();
 
 // ═══ 导航栏：平滑滚动 + scroll-spy ═══
 function navTo(id) {

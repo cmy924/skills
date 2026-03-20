@@ -32,6 +32,7 @@ preview-skill/
 | **角色形象预览** | idle / speaking 双状态对比 + 音色配置表 |
 | **BGM 试听** | 主流程/游戏进行/暂停休息三轨在线试听 |
 | **TTS 语音表** | 全量台词列表 + 在线试听 + 生产状态标签 |
+| **交互音效区块** | 自动扫描 index.tsx 中的 ai-sounds 使用情况，显示音效 ID/名称/描述/使用次数，支持在线试听 |
 | **一键迁移** | 复制 preview-skill 目录到新项目即可使用 |
 
 ## 使用方法
@@ -45,8 +46,9 @@ node .claude/skills/preview-skill/scripts/generate-preview.cjs --open
 生成器自动完成：
 1. 读取 `素材库/materials.json` → 提取场景/道具分组
 2. 读取 `素材库/tts.json` + `素材库/assets.json` → 提取 TTS 数据
-3. 读取 `index.tsx` → 提取角色 CHARACTERS 和 BGM_URLS
-4. 注入通用 HTML 模板 → 输出 `素材库/preview.html`
+3. 读取 `index.tsx` → 提取角色 CHARACTERS、BGM_URLS、ai-sounds 音效使用
+4. 读取 `ai-sounds/references/sounds.md` → 音效名称/描述查询
+5. 注入通用 HTML 模板 → 输出 `素材库/preview.html`
 
 **参数说明：**
 | 参数 | 默认值 | 说明 |
@@ -81,8 +83,7 @@ node .claude/skills/preview-skill/scripts/generate-preview.cjs --open
 │ [各道具] ● │  ────────────────────────────────     │
 │ ─ 音频 ─  │  👤 角色形象 + 音色配置                  │
 │ 🧑‍🎓 角色   │  🎵 BGM 试听                          │
-│ 🎵 BGM   │  🎙️ TTS 语音表                        │
-│ 🗣️ TTS   ●│                                       │
+│ 🎵 BGM   │  🎙️ TTS 语音表                        ││ 🔊 音效   │                                       ││ 🗣️ TTS   ●│                                       │
 │ ▓▓▓░░ 60%│                                       │
 │ [↑ 顶部]  │                                       │
 └──────────┴──────────────────────────────────────┘
@@ -111,6 +112,7 @@ node .claude/skills/preview-skill/scripts/generate-preview.cjs --open
 | `{{PROP_GROUPS_DATA}}` | 道具分组数组 JSON | materials.json |
 | `{{CHARACTERS_DATA}}` | 角色数组 JSON | index.tsx |
 | `{{TTS_DATA}}` | TTS 数组 JSON | tts.json + assets.json |
+| `{{SOUND_EFFECTS_DATA}}` | 音效使用数组 JSON | index.tsx 中 soundLibrary.play() + ai-sounds/references/sounds.md |
 | `{{NAV_ITEMS}}` | 导航栏 HTML | 按道具分组动态生成 |
 | `{{LEVELS_HTML}}` | 关卡设计 HTML | 从现有 preview 继承或自动生成 |
 | `{{SECTIONS_HTML}}` | 内容区 HTML | 按道具分组动态生成 |
