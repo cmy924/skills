@@ -1,12 +1,12 @@
 ```skill
 ---
 name: preview-skill
-description: AI素材工坊技能。基于通用模板自动生成 素材库/preview.html 可视化预览页，展示所有素材状态（场景背景、道具、TTS 语音、角色、BGM），含内置「素材生产线」仪表盘、左侧导航栏、Prompt 编辑器、重新生产弹窗。支持一键迁移到其他小游戏项目。触发词包括"AI素材工坊"、"打开AI素材工坊"、"preview"、"素材面板"、"生产面板"、"素材总览"、"查看素材"、"素材状态"、"生成预览页"、"更新预览页"。
+description: AI素材工坊技能。基于通用模板自动生成 public/preview.html 可视化预览页，展示所有素材状态（场景背景、道具、TTS 语音、角色、BGM），含内置「素材生产线」仪表盘、左侧导航栏、Prompt 编辑器、重新生产弹窗。支持一键迁移到其他小游戏项目。触发词包括"AI素材工坊"、"打开AI素材工坊"、"preview"、"素材面板"、"生产面板"、"素材总览"、"查看素材"、"素材状态"、"生成预览页"、"更新预览页"。
 ---
 
 # Preview Skill — AI素材工坊 · 模板化生成器
 
-基于通用 HTML 模板 + 项目数据文件，自动生成 `素材库/preview.html` 可视化预览页。
+基于通用 HTML 模板 + 项目数据文件，自动生成 `public/preview.html` 可视化预览页。
 
 ## 文件结构
 
@@ -44,17 +44,16 @@ node .claude/skills/preview-skill/scripts/generate-preview.cjs --open
 ```
 
 生成器自动完成：
-1. 读取 `素材库/materials.json` → 提取场景/道具分组
-2. 读取 `素材库/tts.json` + `素材库/assets.json` → 提取 TTS 数据
-3. 读取 `index.tsx` → 提取角色 CHARACTERS、BGM_URLS、ai-sounds 音效使用
-4. 读取 `ai-sounds/references/sounds.md` → 音效名称/描述查询
-5. 注入通用 HTML 模板 → 输出 `素材库/preview.html`
+1. 读取 `public/asset-data.json` → 提取 ASSETS 素材元数据（prompt/size/type）、ASSET_URLS、角色、BGM、TTS URL
+2. 读取 `index.tsx` → 提取 ai-sounds 音效使用
+3. 读取 `ai-sounds/references/sounds.md` → 音效名称/描述查询
+4. 注入通用 HTML 模板 → 输出 `public/preview.html`
 
 **参数说明：**
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `--project-dir` | 自动检测（向上查找含 素材库/ 的目录）| 项目根目录 |
-| `--output` | `素材库/preview.html` | 输出路径 |
+| `--project-dir` | 自动检测（向上查找含 `public/asset-data.json` 的目录）| 项目根目录 |
+| `--output` | `public/preview.html` | 输出路径 |
 | `--open` | false | 生成后自动打开浏览器 |
 
 ### 方式二：AI 对话触发
@@ -123,10 +122,10 @@ node .claude/skills/preview-skill/scripts/generate-preview.cjs --open
 
 ```bash
 # Windows
-start 素材库/preview.html
+start public/preview.html
 
 # macOS
-open 素材库/preview.html
+open public/preview.html
 ```
 
 > 纯静态 HTML，双击即可打开，无需服务器。
@@ -164,35 +163,21 @@ open 素材库/preview.html
 - 展开 → 编辑 → 📋 复制 / 🔄 重新生产
 - 重新生产弹窗：输入修改需求 → 构建 4 步 Copilot 指令 → 跳转 VS Code
 
-### Step 6：生成后上传
-
-> 每次 preview.html 被生成或更新后必须执行。
-
-```bash
-# 上传到 CS
-bun --env-file=.claude/.env run .claude/skills/upload-skill/scripts/upload.js "./素材库/preview.html" --json
-
-# 更新 Debug 面板链接
-# 找到 index.tsx 中 {/* AI素材工坊 */} 区域，更新 href
-```
-
 ## 数据文件
 
 | 文件 | 说明 |
 |------|------|
-| `素材库/preview.html` | 输出文件（由生成器自动生成） |
-| `素材库/materials.json` | 素材清单数据源 |
-| `素材库/tts.json` | TTS 语音数据源 |
-| `素材库/assets.json` | Prompt 和生产配置 |
-| `index.tsx` | 角色/BGM 数据来源 |
+| `public/preview.html` | 输出文件（由生成器自动生成） |
+| `public/asset-data.json` | 唯一数据源（ASSETS 元数据 + URL，由 AI 直接维护） |
+| `asset-urls.ts` | CDN URL 来源（index.tsx 编译期 import） |
+| `index.tsx` | ai-sounds 音效使用来源 |
 
 ## 与其他 Skill 的协作
 
 | 关系 | Skill | 说明 |
 |------|-------|------|
-| **上游** | `extract-skill` | 生成 materials.json、tts.json 数据 |
-| **协作** | `upload-skill` | 上传 preview.html 到 CS |
-| **协作** | `debug-skill` | 更新 Debug 面板中的AI素材工坊链接 |
+| **上游** | `extract-skill` | 生成 asset-urls.ts 数据 |
+| **触发** | 素材变更 | 任何素材新增/删除/修改后，需重新运行生成器更新 preview.html |
 | **下游** | `produce-skill` | 接收生产指令 |
 | **下游** | `transparent-bg-skill` | 道具类去背景 |
 | **下游** | `check-skill` | 验证素材完整性 |
@@ -202,7 +187,7 @@ bun --env-file=.claude/.env run .claude/skills/upload-skill/scripts/upload.js ".
 ### 迁移步骤
 
 1. 复制 `.claude/skills/preview-skill/` 整个目录到新项目
-2. 确保新项目已有 `素材库/materials.json` 和 `素材库/tts.json`（由 extract-skill 生成）
+2. 确保新项目已有 `public/asset-data.json`（由 extract-skill 生成）和 `asset-urls.ts`
 3. 运行生成器：`node .claude/skills/preview-skill/scripts/generate-preview.cjs --open`
 
 ### 通用部分（模板内置，无需修改）
@@ -230,8 +215,14 @@ bun --env-file=.claude/.env run .claude/skills/upload-skill/scripts/upload.js ".
 
 ## 注意事项
 
-- preview.html 是**静态快照**，生产素材后需重新生成或刷新
-- **每次更新后必须执行：** 上传 CS + 更新 Debug 面板链接
+- preview.html 是**静态快照**，以下情况需重新运行生成器：
+  - 素材新增或删除（materials.json / assets.json / tts.json 变更）
+  - 素材 URL 更新（生产完成后）
+  - Prompt 修改
+  - 角色/BGM 变更（index.tsx 变更）
+  ```bash
+  node .claude/skills/preview-skill/scripts/generate-preview.cjs
+  ```
 - 剪贴板复制使用 `execCommand('copy')` 优先，async clipboard API fallback
 - CDN URL 引用线上资源，需网络连接
 ```

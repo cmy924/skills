@@ -311,6 +311,21 @@ async function main() {
 	console.log(`[pipeline] 📄 ${jsonOutputPath}`)
 	console.log(`[pipeline] 🔗 URL 映射共 ${Object.keys(urlMap).length} 条`)
 
+	// 自动重新生成 asset-data.json（保持与 asset-urls.ts 同步）
+	const genScript = path.resolve(import.meta.dir, '../../preview-skill/scripts/gen-asset-data.mjs');
+	try {
+		const proc = Bun.spawn(['node', genScript], { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' });
+		await proc.exited;
+		if (proc.exitCode === 0) {
+			console.log('[pipeline] ✅ asset-data.json 已同步更新');
+		} else {
+			const err = await new Response(proc.stderr).text();
+			console.log('[pipeline] ⚠️  asset-data.json 更新失败:', err.trim());
+		}
+	} catch (e) {
+		console.log('[pipeline] ⚠️  无法运行 gen-asset-data.mjs:', e.message);
+	}
+
 	if (failed > 0) {
 		process.exit(1)
 	}

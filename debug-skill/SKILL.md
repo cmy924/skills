@@ -1,6 +1,6 @@
 ---
 name: debug-skill
-description: 为 React 小游戏/课件组件添加通用开发调试面板（debug 模式）。通过 URL 参数 dev=1 激活，内置拖拽移动、缩放、BGM 控制、音效测试、AI素材工坊（本地预览/上传/打开），游戏专属区块（关卡/步骤/状态）通过 sections 配置传入。所有标签使用中文。触发词：debug模式、调试面板、dev模式、开发模式、debug panel、调试工具、跳关、跳步骤。
+description: 为 React 小游戏/课件组件添加通用开发调试面板（debug 模式）。通过 URL 参数 dev=1 激活，内置拖拽移动、缩放、BGM 控制、音效测试、AI素材工坊（打开本地/远程工坊页面），游戏专属区块（关卡/步骤/状态）通过 sections 配置传入。所有标签使用中文。触发词：debug模式、调试面板、dev模式、开发模式、debug panel、调试工具、跳关、跳步骤。
 ---
 
 # Debug Skill — 通用开发调试面板
@@ -98,10 +98,12 @@ export interface DevPanelProps {
   stopBGM: () => void
   /** 已上传的 AI素材工坊 URL（从 params.materialWorkshopUrl 传入） */
   materialWorkshopUrl?: string
+  /** 项目 ID（来自 .aic-info.json，用于生产环境工坊 URL） */
+  projectId: string
 }
 
 export default function DevPanel({
-  sections = [], bgmKey, playBGM, stopBGM, materialWorkshopUrl
+  sections = [], bgmKey, playBGM, stopBGM, materialWorkshopUrl, projectId
 }: DevPanelProps) {
   // ─── 面板内部状态 ───
   const [devPanelOpen, setDevPanelOpen] = useState(true)
@@ -155,10 +157,6 @@ export default function DevPanel({
   }
 
   // ─── AI素材工坊 ───
-  const UPLOAD_API = 'https://aic-service.sdp.101.com/v1.0/cs/actions/upload_to_cs'
-  const CDN_HOST = 'https://gcdncs.101.com'
-  const [workshopUploading, setWorkshopUploading] = useState(false)
-
   const openInBrowser = useCallback((url: string) => {
     const a = document.createElement('a')
     a.href = url
@@ -167,60 +165,21 @@ export default function DevPanel({
     a.click()
   }, [])
 
-  const openRemoteWorkshop = useCallback(() => {
-    if (!materialWorkshopUrl) {
-      alert('materialWorkshopUrl 未配置，请先点击「制作并上传」生成')
-      return
-    }
-    openInBrowser(materialWorkshopUrl)
-  }, [openInBrowser, materialWorkshopUrl])
+  // FIX: 工坊地址策略 — 根据 URL 参数判断环境
+  // 本地开发: aic-view.sdp.101.com/dev/?id=xxx&host=127.0.0.1&port=3005
+  // 生产环境: 无 host/port 参数
+  const urlParams = new URLSearchParams(window.location.search)
+  const devHost = urlParams.get('host')
+  const devPort = urlParams.get('port') || '3005'
+  const isLocal = Boolean(devHost)
+  const workshopUrl = materialWorkshopUrl
+    || (isLocal
+      ? `http://${devHost}:${devPort}/preview.html`
+      : `https://cs.101.com/v0.1/static/aic_deploy/${projectId}/preview.html`)
 
-  const uploadWorkshop = useCallback(async () => {
-    if (workshopUploading) return
-    setWorkshopUploading(true)
-    try {
-      const localUrl = `${window.location.origin}${encodeURI('/素材库/preview.html')}`
-      const resp = await fetch(localUrl)
-      if (!resp.ok) throw new Error(`获取 preview.html 失败: ${resp.status}`)
-      const htmlBlob = await resp.blob()
-
-      const formData = new FormData()
-      formData.append('file', new File([htmlBlob], 'preview.html', { type: 'text/html' }))
-
-      const uploadResp = await fetch(UPLOAD_API, {
-        method: 'POST',
-        headers: {
-          'Authorization': 'AIC',
-          'Sdp-App-Id': 'b4fb92a0-af7f-49c2-b270-8f62afac1133'
-        },
-        body: formData
-      })
-
-      if (!uploadResp.ok) throw new Error(`上传失败: ${uploadResp.status}`)
-      const dentry = await uploadResp.json()
-      const dentryId = dentry.dentry_id || dentry.dentryId || dentry.id
-      if (!dentryId) throw new Error('未获取到 dentryId')
-
-      const url = `${CDN_HOST}/v0.1/download?dentryId=${dentryId}`
-      await navigator.clipboard.writeText(url)
-      alert(`✅ AI素材工坊已上传！\n\nURL已复制到剪贴板:\n${url}\n\n请更新 exampleParams.json 中的 materialWorkshopUrl`)
-    } catch (err) {
-      const cmd = [
-        '$r = bun --env-file=".claude\\.env" run ".claude\\skills\\upload-skill\\scripts\\upload.js" "素材库\\preview.html" --json | ConvertFrom-Json;',
-        '$dentryId = $r[0].dentryId;',
-        '$url = "https://gcdncs.101.com/v0.1/download?dentryId=$dentryId";',
-        '$p = Get-Content "public\\exampleParams.json" -Raw | ConvertFrom-Json;',
-        '$p.materialWorkshopUrl = $url;',
-        '$p | ConvertTo-Json -Depth 10 | Set-Content "public\\exampleParams.json" -Encoding UTF8;',
-        'Write-Host "✅ materialWorkshopUrl updated: $url"'
-      ].join(' ')
-      await navigator.clipboard.writeText(cmd).catch(() => {})
-      const reason = err instanceof Error ? err.message : String(err)
-      alert(`浏览器直传失败（${reason}）\n\n已复制终端命令到剪贴板，请在项目根目录终端执行`)
-    } finally {
-      setWorkshopUploading(false)
-    }
-  }, [workshopUploading])
+  const openWorkshopPage = useCallback(() => {
+    openInBrowser(workshopUrl)
+  }, [openInBrowser, workshopUrl])
 
   // ─── 区块渲染器 ───
   const scale = devSize.w / 220
@@ -349,19 +308,13 @@ export default function DevPanel({
           <div className={styles.devSection}>
             <span className={styles.devLabel} style={labelStyle}>AI素材工坊</span>
             <div className={styles.devBtnGroup} style={gapStyle}>
-              <button className={styles.devBtn} onClick={() => openInBrowser(`${window.location.origin}${encodeURI('/素材库/preview.html')}`)} style={btnStyle}>
-                本地预览
-              </button>
               <button
                 className={styles.devBtn}
-                onClick={uploadWorkshop}
-                style={{ ...btnStyle, opacity: workshopUploading ? 0.5 : 1 }}
-                disabled={workshopUploading}
+                onClick={openWorkshopPage}
+                style={btnStyle}
+                title="打开AI素材工坊"
               >
-                {workshopUploading ? '上传中...' : '制作并上传'}
-              </button>
-              <button className={styles.devBtn} onClick={openRemoteWorkshop} style={btnStyle}>
-                打开工坊
+                打开AI素材工坊
               </button>
             </div>
           </div>
@@ -830,23 +783,13 @@ sections={[
 | **折叠/展开** | 点击 DEV 按钮切换 |
 | **BGM 控制** | 主流程 / 行动中 / 暂停 / 停止 |
 | **音效测试** | 通关 / 错误 / 答题1 / 点击 / 确认 |
-| **AI素材工坊** | 本地预览 / 制作并上传（上传 preview.html 到 CS） / 打开工坊（打开 materialWorkshopUrl） |
+| **AI素材工坊** | 打开AI素材工坊（根据 URL 参数 host/port 判断环境：本地开发打开 `http://{host}:{port}/preview.html`，生产环境打开 `https://cs.101.com/v0.1/static/aic_deploy/{projectId}/preview.html`） |
 
 ## AI素材工坊按钮说明
 
 | 按钮 | 功能 |
 |------|------|
-| **本地预览** | 新标签页打开本地 `素材库/preview.html` |
-| **制作并上传** | 获取本地 preview.html → 上传 CS → 生成 URL → 复制到剪贴板。浏览器直传失败时自动复制终端命令到剪贴板 |
-| **打开工坊** | 新标签页打开 `params.materialWorkshopUrl`（已上传的在线版本） |
-
-### 终端命令手动上传
-
-如果浏览器直传因 CORS 失败，在项目根目录终端执行：
-
-```powershell
-$r = bun --env-file=".claude\.env" run ".claude\skills\upload-skill\scripts\upload.js" "素材库\preview.html" --json | ConvertFrom-Json; $dentryId = $r[0].dentryId; $url = "https://gcdncs.101.com/v0.1/download?dentryId=$dentryId"; $p = Get-Content "public\exampleParams.json" -Raw | ConvertFrom-Json; $p.materialWorkshopUrl = $url; $p | ConvertTo-Json -Depth 10 | Set-Content "public\exampleParams.json" -Encoding UTF8; Write-Host "✅ materialWorkshopUrl updated: $url"
-```
+| **打开AI素材工坊** | 新标签页打开工坊页面。优先级：① `materialWorkshopUrl` 参数 ② URL 参数有 host/port → `http://{host}:{port}/preview.html` ③ 生产环境 → `https://cs.101.com/v0.1/static/aic_deploy/{projectId}/preview.html` |
 
 ## 面板布局
 
@@ -871,7 +814,7 @@ $r = bun --env-file=".claude\.env" run ".claude\skills\upload-skill\scripts\uplo
 │ │ [通关] [错误] [答题1] [点击] │  │
 │ │ [确认]                       │  │
 │ │ AI素材工坊                   │  │
-│ │ [本地预览] [制作并上传] [打开]│  │
+│ │ [打开AI素材工坊]           │  │
 │ └──────────────────────────────┘  │
 │                                ◢  │  ← 缩放手柄
 └──────────────────────────────────┘

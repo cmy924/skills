@@ -37,10 +37,12 @@ export interface DevPanelProps {
   stopBGM: () => void
   /** 已上传的 AI素材工坊 URL（从 params.materialWorkshopUrl 传入） */
   materialWorkshopUrl?: string
+  /** 项目 ID（来自 .aic-info.json，用于生产环境工坊 URL） */
+  projectId: string
 }
 
 export default function DevPanel({
-  sections = [], bgmKey, playBGM, stopBGM, materialWorkshopUrl
+  sections = [], bgmKey, playBGM, stopBGM, materialWorkshopUrl, projectId
 }: DevPanelProps) {
   // ─── 面板内部状态 ───
   const [devPanelOpen, setDevPanelOpen] = useState(true)
@@ -94,10 +96,6 @@ export default function DevPanel({
   }
 
   // ─── AI素材工坊 ───
-  const UPLOAD_API = 'https://aic-service.sdp.101.com/v1.0/cs/actions/upload_to_cs'
-  const CDN_HOST = 'https://gcdncs.101.com'
-  const [workshopUploading, setWorkshopUploading] = useState(false)
-
   const openInBrowser = useCallback((url: string) => {
     const a = document.createElement('a')
     a.href = url
@@ -106,66 +104,21 @@ export default function DevPanel({
     a.click()
   }, [])
 
-  const openRemoteWorkshop = useCallback(() => {
-    if (!materialWorkshopUrl) {
-      alert('materialWorkshopUrl 未配置，请先点击「制作并上传」生成')
-      return
-    }
-    openInBrowser(materialWorkshopUrl)
-  }, [openInBrowser, materialWorkshopUrl])
+  // FIX: 工坊地址策略 — 根据 URL 参数判断环境
+  // 本地开发: aic-view.sdp.101.com/dev/?id=xxx&host=127.0.0.1&port=3005
+  // 生产环境: 无 host/port 参数
+  const urlParams = new URLSearchParams(window.location.search)
+  const devHost = urlParams.get('host')
+  const devPort = urlParams.get('port') || '3005'
+  const isLocal = Boolean(devHost)
+  const workshopUrl = materialWorkshopUrl
+    || (isLocal
+      ? `http://${devHost}:${devPort}/preview.html`
+      : `https://cs.101.com/v0.1/static/aic_deploy/${projectId}/preview.html`)
 
-  const uploadWorkshop = useCallback(async () => {
-    if (workshopUploading) return
-    setWorkshopUploading(true)
-    try {
-      // 1. 获取本地 preview.html
-      const localUrl = `${window.location.origin}${encodeURI('/素材库/preview.html')}`
-      const resp = await fetch(localUrl)
-      if (!resp.ok) throw new Error(`获取 preview.html 失败: ${resp.status}`)
-      const htmlBlob = await resp.blob()
-
-      // 2. 上传到 CS
-      const formData = new FormData()
-      formData.append('file', new File([htmlBlob], 'preview.html', { type: 'text/html' }))
-
-      const uploadResp = await fetch(UPLOAD_API, {
-        method: 'POST',
-        headers: {
-          'Authorization': 'AIC',
-          'Sdp-App-Id': 'b4fb92a0-af7f-49c2-b270-8f62afac1133'
-        },
-        body: formData
-      })
-
-      if (!uploadResp.ok) throw new Error(`上传失败: ${uploadResp.status}`)
-      const dentry = await uploadResp.json()
-      const dentryId = dentry.dentry_id || dentry.dentryId || dentry.id
-      if (!dentryId) throw new Error('未获取到 dentryId')
-
-      // 3. 构建浏览器可查看 URL（不带 attachment=true）
-      const url = `${CDN_HOST}/v0.1/download?dentryId=${dentryId}`
-
-      // 4. 复制到剪贴板
-      await navigator.clipboard.writeText(url)
-      alert(`✅ AI素材工坊已上传！\n\nURL已复制到剪贴板:\n${url}\n\n请更新 exampleParams.json 中的 materialWorkshopUrl`)
-    } catch (err) {
-      // FIX: CORS 或认证失败时，退回终端命令方案
-      const cmd = [
-        '$r = bun --env-file=".claude\\.env" run ".claude\\skills\\upload-skill\\scripts\\upload.js" "素材库\\preview.html" --json | ConvertFrom-Json;',
-        '$dentryId = $r[0].dentryId;',
-        '$url = "https://gcdncs.101.com/v0.1/download?dentryId=$dentryId";',
-        '$p = Get-Content "public\\exampleParams.json" -Raw | ConvertFrom-Json;',
-        '$p.materialWorkshopUrl = $url;',
-        '$p | ConvertTo-Json -Depth 10 | Set-Content "public\\exampleParams.json" -Encoding UTF8;',
-        'Write-Host "✅ materialWorkshopUrl updated: $url"'
-      ].join(' ')
-      await navigator.clipboard.writeText(cmd).catch(() => {})
-      const reason = err instanceof Error ? err.message : String(err)
-      alert(`浏览器直传失败（${reason}）\n\n已复制终端命令到剪贴板，请在项目根目录终端执行`)
-    } finally {
-      setWorkshopUploading(false)
-    }
-  }, [workshopUploading])
+  const openWorkshopPage = useCallback(() => {
+    openInBrowser(workshopUrl)
+  }, [openInBrowser, workshopUrl])
 
   // ─── 区块渲染器 ───
   const scale = devSize.w / 220
@@ -294,19 +247,13 @@ export default function DevPanel({
           <div className={styles.devSection}>
             <span className={styles.devLabel} style={labelStyle}>AI素材工坊</span>
             <div className={styles.devBtnGroup} style={gapStyle}>
-              <button className={styles.devBtn} onClick={() => openInBrowser(`${window.location.origin}${encodeURI('/素材库/preview.html')}`)} style={btnStyle}>
-                本地预览
-              </button>
               <button
                 className={styles.devBtn}
-                onClick={uploadWorkshop}
-                style={{ ...btnStyle, opacity: workshopUploading ? 0.5 : 1 }}
-                disabled={workshopUploading}
+                onClick={openWorkshopPage}
+                style={btnStyle}
+                title="打开AI素材工坊"
               >
-                {workshopUploading ? '上传中...' : '制作并上传'}
-              </button>
-              <button className={styles.devBtn} onClick={openRemoteWorkshop} style={btnStyle}>
-                打开工坊
+                打开AI素材工坊
               </button>
             </div>
           </div>

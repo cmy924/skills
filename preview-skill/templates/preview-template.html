@@ -844,7 +844,7 @@
         .img-error { color: var(--red); font-size: 12px; text-align: center; padding: 16px; }
 
         /* ─── 关卡概览 ─── */
-        .grid-levels { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+        .grid-levels { grid-template-columns: repeat(3, 1fr); }
         .level-card {
           background: var(--card);
           border: 1px solid var(--border);
@@ -1040,27 +1040,105 @@
 </div>
 
 <script>
-    // ═══ 数据定义（由生成器注入）═══
-    const SCENES = {{SCENES_DATA}};
-    const PROP_GROUPS = {{PROP_GROUPS_DATA}};
-    const CHARACTERS = {{CHARACTERS_DATA}};
-    const NARRATOR_VOICE = {{NARRATOR_VOICE_DATA}};
-    const BGMS = {{BGMS_DATA}};
-    const TTS = {{TTS_DATA}};
-    const ROLE_NAMES = {{ROLE_NAMES_DATA}};
+    // ═══ 运行时配置（由生成器注入）═══
+    const ASSET_DATA_URL = '{{ASSET_DATA_URL}}';
+    const LOCAL_ASSET_DATA_URL = '{{LOCAL_ASSET_DATA_URL}}';
     const SOUND_EFFECTS = {{SOUND_EFFECTS_DATA}};
     const WORKSPACE_PATH = '{{WORKSPACE_PATH}}';
 
-    // ═══ 从 PROP_GROUPS 展开所有道具项 ═══
-    const ALL_PROPS = [];
-    const PROP_GRID_MAP = {};
-    for (const g of PROP_GROUPS) {
-      PROP_GRID_MAP[g.key] = g.items;
-      ALL_PROPS.push(...g.items);
+    // ═══ 运行时数据（fetch 后填充）═══
+    let SCENES = [], PROP_GROUPS = [], CHARACTERS = [], NARRATOR_VOICE = {}, BGMS = [], TTS = [], ROLE_NAMES = {};
+    let ALL_PROPS = [], PROP_GRID_MAP = {}, ALL_DATA_ARRAYS = [];
+
+    // ═══ 图标推断函数 ═══
+    function guessIcon(name) {
+      if (/开始|首页|start|home/i.test(name)) return '🏠';
+      if (/关匔1|L1|level.?1/i.test(name)) return '🎞️';
+      if (/关匔2|L2|level.?2/i.test(name)) return '🌊';
+      if (/关匔3|L3|level.?3/i.test(name)) return '🏔️';
+      if (/关匔4|L4|level.?4/i.test(name)) return '🌋';
+      if (/关匔5|L5|level.?5/i.test(name)) return '🌌';
+      if (/关卡|level/i.test(name)) return '🗺️';
+      if (/背景|bg/i.test(name)) return '🖼️';
+      if (/过渡|结果|result|transition/i.test(name)) return '✨';
+      return '📸';
+    }
+    const PROP_ICON_DICT = [
+      [/星|star/, '⭐'], [/锁|lock/, '🔒'], [/计时|timer|clock/, '⏱️'],
+      [/成功|sparkle|success/, '✨'], [/误|错|wrong|fail/, '❌'], [/庆祝|win/, '🎉'],
+      [/气泡|bubble/, '💧'], [/火|fire/, '🔥'], [/冰|ice|snow/, '❄️'],
+      [/鱼|fish/, '🐟'], [/鸟|bird/, '🐦'], [/猫|cat/, '🐱'],
+      [/机器人|robot/, '🤖'], [/手机|phone/, '📱'], [/游戏机|gamepad/, '🎮'],
+      [/卡片|card/, '🃏'], [/书|book/, '📖'], [/铅笔|pencil/, '✏️'],
+      [/尺|ruler/, '📏'], [/作业|homework/, '📝'], [/笔记|note/, '📒'],
+      [/糖果|candy/, '🍬'], [/遥控|remote/, '📺'], [/收纳|storage/, '📦'],
+    ];
+    function guessPropIcon(name) {
+      for (const [p, icon] of PROP_ICON_DICT) if (p.test(name)) return icon;
+      return '🎭';
     }
 
-    // ═══ Prompt 交互 ═══
-    const ALL_DATA_ARRAYS = [SCENES, ...PROP_GROUPS.map(g => g.items)];
+    // ═══ 从原始 asset-data.json 构建运行时数据 ═══
+    function buildRuntimeData(d) {
+      const assets = d.ASSETS || [];
+      const sections = d.SECTIONS || [];
+      const ttsData = d.TTS_DATA || [];
+      const charsRaw = d.CHARACTERS || {};
+
+      SCENES = assets
+        .filter(a => a.materialId && a.materialId.startsWith('SCENE_'))
+        .map(a => {
+          const m = a.materialId.match(/SCENE_L(\d+)/i);
+          return { id: a.materialId, name: a.name, level: m ? 'L'+m[1] : '通用',
+            status: a.url ? 'deployed' : 'planned', spec: a.size ? a.size.replace('x', '×') : '',
+            priority: 'P0', url: a.url || null, prompt: a.prompt || '', icon: guessIcon(a.name) };
+        });
+
+      PROP_GROUPS = sections
+        .filter(s => s.category !== 'scene')
+        .map(s => {
+          const items = (s.materialIds || []).map(mid => {
+            const asset = assets.find(a => a.materialId === mid);
+            if (!asset) return null;
+            const lm = asset.materialId.match(/L(\d+)/i);
+            return { id: asset.materialId, name: asset.name, level: lm ? 'L'+lm[1] : '通用',
+              status: asset.url ? 'deployed' : 'planned', spec: asset.size ? asset.size.replace('x', '×') : '',
+              priority: 'P1', url: asset.url || null, prompt: asset.prompt || '',
+              icon: guessPropIcon(asset.name), transparentBg: s.transparentBg };
+          }).filter(Boolean);
+          if (!items.length) return null;
+          return { key: s.key, label: s.label, icon: s.icon, transparentBg: s.transparentBg,
+            gridId: s.key + 'Grid', sectionId: 'sec-' + s.key, items };
+        }).filter(Boolean);
+
+      CHARACTERS = Object.entries(charsRaw).map(([id, c]) => {
+        const fl = ttsData.find(t => t.roleId === id || t.role === (c.name || id));
+        return { id, name: c.name || id, color: c.themeColor || c.color || '#888',
+          model: fl?.model || null, ref_audio: fl?.ref_audio || null,
+          voiceDesc: (c.name || id) + '音色', idle: c.idleUrl || c.idle || '', speaking: c.speakingUrl || c.speaking || '' };
+      });
+
+      const nl = ttsData.find(t => t.role === 'narrator');
+      NARRATOR_VOICE = { id: 'narrator', name: '旁白', model: nl?.model || null, ref_audio: nl?.ref_audio || null, voiceDesc: '旁白音色' };
+
+      const bgmNameMap = { main:{name:'主流程 BGM',desc:'默认播放'}, progress:{name:'进行中 BGM',desc:'行动阶段循环播放'}, rest:{name:'休息 BGM',desc:'暂停/休息时切换播放'} };
+      BGMS = Object.entries(d.BGM_URLS || {}).map(([key, url]) => {
+        const info = bgmNameMap[key] || { name: key + ' BGM', desc: '' };
+        return { id: key, name: info.name, desc: info.desc, url };
+      });
+
+      TTS = ttsData.map(t => ({ role: t.role || 'unknown', name: t.id, stage: t.scene || '',
+        model: t.model || null, ref_audio: t.ref_audio || null, content: t.text, url: t.url || '' }));
+
+      ROLE_NAMES = { narrator: '旁白', ui: 'UI语音' };
+      for (const c of CHARACTERS) ROLE_NAMES[c.id] = c.name;
+      for (const t of ttsData) if (t.role && !ROLE_NAMES[t.role]) ROLE_NAMES[t.role] = t.role;
+
+      ALL_PROPS = [];
+      PROP_GRID_MAP = {};
+      for (const g of PROP_GROUPS) { PROP_GRID_MAP[g.key] = g.items; ALL_PROPS.push(...g.items); }
+      ALL_DATA_ARRAYS = [SCENES, ...PROP_GROUPS.map(g => g.items)];
+    }
 
     function findItemById(id) {
       for (const arr of ALL_DATA_ARRAYS) {
@@ -1109,32 +1187,24 @@
         return '请帮我重新生产单个道具素材「' + item.name + '」（' + item.id + spec + '）。\n' +
           '使用以下最新 prompt：\n' + promptText + '\n\n' +
           '执行要求：\n' +
-          '1. 从 素材库/assets.json 中定位 ' + item.id + ' 对应素材，使用 produce-skill 的 asset-generate.js --type 12 生产新图\n' +
+          '1. 从 public/asset-data.json ASSETS 中定位 ' + item.id + ' 对应素材，使用 produce-skill 的 asset-generate.js --type 12 生产新图\n' +
           '2. 对该图片执行 transparent-bg-skill 去背景透明化\n' +
-          '3. 使用 upload-skill 上传透明图并获取 CDN URL\n' +
-          '4. 将新 URL 同步写入以下文件中该素材对应条目：\n' +
-          '   - 素材库/materials.json（materialId=' + item.id + '，更新 remoteUrl/status）\n' +
-          '   - 素材库/preview.html（id=' + item.id + '，更新 url/status/prompt）\n' +
-          '   - asset-urls.ts（更新该素材对应的 ASSET_URLS 键值）\n' +
-          '5. 最后输出修改了哪些文件与新 URL。';
+          '3. 使用 upload-skill --update-urls 上传透明图（脚本会自动更新 asset-urls.ts 和 asset-data.json）\n' +
+          '4. 最后输出新 CDN URL 与变更文件列表。';
       }
 
       if (isScene) {
         return '请帮我重新生产单个场景素材「' + item.name + '」（' + item.id + spec + '）。\n' +
           '使用以下最新 prompt：\n' + promptText + '\n\n' +
           '执行要求：\n' +
-          '1. 从 素材库/assets.json 中定位 ' + item.id + ' 对应素材，使用 produce-skill 的 asset-generate.js --type 12 生产新图\n' +
-          '2. 获取产物 CDN URL（场景素材无需透明化）\n' +
-          '3. 将新 URL 同步写入以下文件中该素材对应条目：\n' +
-          '   - 素材库/materials.json（materialId=' + item.id + '，更新 remoteUrl/status）\n' +
-          '   - 素材库/preview.html（id=' + item.id + '，更新 url/status/prompt）\n' +
-          '   - asset-urls.ts（更新该素材对应的 ASSET_URLS 键值）\n' +
-          '4. 最后输出修改了哪些文件与新 URL。';
+          '1. 从 public/asset-data.json ASSETS 中定位 ' + item.id + ' 对应素材，使用 produce-skill 的 asset-generate.js --type 12 生产新图\n' +
+          '2. 场景素材无需透明化，使用 upload-skill --update-urls 上传（脚本会自动更新 asset-urls.ts 和 asset-data.json）\n' +
+          '3. 最后输出新 CDN URL 与变更文件列表。';
       }
 
       return '请帮我重新生产素材「' + item.name + '」（' + item.id + spec + '）。\n' +
         '使用以下最新 prompt：\n' + promptText + '\n\n' +
-        '生产完成后请同步更新：素材库/preview.html、素材库/materials.json、asset-urls.ts，并返回新 URL 与变更文件列表。';
+        '生产完成后使用 upload-skill --update-urls 上传，脚本会自动同步 asset-urls.ts 和 asset-data.json，并返回新 URL 与变更文件列表。';
     }
 
     // ═══ 重置提示词 ═══
@@ -1183,22 +1253,22 @@
       copyText += '要求：保留旧 prompt 中仍然适用的描述（如画风风格、尺寸、透明背景等通用设定），仅按用户需求修改相关部分。\n\n';
       copyText += '【第二步：更新项目文件中的 prompt】\n';
       copyText += '将新生成的 prompt 同步写入以下位置：\n';
-      copyText += '- 素材库/preview.html 中 id=\'' + id + '\' 的 prompt 字段\n';
+      copyText += '- public/preview.html 中 id=\'' + id + '\' 的 prompt 字段\n';
       copyText += '- 素材库/materials.json 中 materialId=\'' + id + '\' 的对应条目（如有 prompt 字段则更新）\n\n';
       copyText += '【第三步：使用新 prompt 生产素材】\n';
       if (isScene) {
         copyText += '场景素材不需要透明化，直接生产：\n';
         copyText += '1. 使用 produce-skill 的 asset-generate.js --type 12 生产新图\n';
         copyText += '2. 获取产物 CDN URL\n';
-        copyText += '3. 将新 URL 同步写入：素材库/materials.json（remoteUrl/status）、素材库/preview.html（url/status）、asset-urls.ts\n';
+        copyText += '3. 将新 URL 同步写入：素材库/materials.json（remoteUrl/status）、public/preview.html（url/status）、asset-urls.ts\n';
       } else if (isPropLike) {
         copyText += '道具素材需要透明背景：\n';
         copyText += '1. 使用 produce-skill 的 asset-generate.js --type 12 生产新图\n';
         copyText += '2. 执行 transparent-bg-skill 去背景透明化\n';
         copyText += '3. 使用 upload-skill 上传获取 CDN URL\n';
-        copyText += '4. 将新 URL 同步写入：素材库/materials.json（remoteUrl/status）、素材库/preview.html（url/status）、asset-urls.ts\n';
+        copyText += '4. 将新 URL 同步写入：素材库/materials.json（remoteUrl/status）、public/preview.html（url/status）、asset-urls.ts\n';
       } else {
-        copyText += '使用 produce-skill 生产后更新 素材库/preview.html、素材库/materials.json、asset-urls.ts。\n';
+        copyText += '使用 produce-skill 生产后更新 public/preview.html、素材库/materials.json、asset-urls.ts。\n';
       }
       copyText += '\n【第四步：输出结果】\n';
       copyText += '输出新 prompt 全文、新 URL、修改了哪些文件。';
@@ -1304,8 +1374,10 @@
 
     function renderTTS() {
       var tbody = document.querySelector('#ttsTable tbody');
-      if (!tbody || !TTS.length) return;
-      tbody.innerHTML = TTS.map(function(t,i) {
+      if (!tbody) return;
+      var rows = TTS.filter(function(t) { return t.role !== 'ui'; });
+      if (!rows.length) return;
+      tbody.innerHTML = rows.map(function(t,i) {
         return '<tr>'+
           '<td>'+(i+1)+'</td>'+
           '<td><span class="role-tag '+t.role+'">'+(ROLE_NAMES[t.role]||t.role)+'</span></td>'+
@@ -1406,21 +1478,21 @@
 
       if (sec.type === 'TTS') {
         return '请帮我生产「' + sec.label + '」素材（' + total + '条TTS：' + nameList + '）。\n' +
-          '读取 素材库/assets.json 中 type 21 的 TTS 数据，使用 produce-skill 的 asset-generate.js 执行生产，' +
-          '生产完成后更新 素材库/tts.json 和 素材库/preview.html 中对应条目的 url 字段。';
+          '读取 public/asset-data.json 中 type 21 的 TTS 数据，使用 produce-skill 的 asset-generate.js 执行生产，' +
+          '生产完成后更新 public/asset-data.json 和 public/preview.html 中对应条目的 url 字段。';
       }
       if (sec.transparentBg) {
         return '请帮我生产「' + sec.label + '」道具素材并完成透明化处理（' + total + '张：' + nameList + '）。\n' +
           '完整流程：\n' +
-          '1. 从 素材库/assets.json 提取这些素材的 prompt，使用 produce-skill 的 asset-generate.js --type 12 执行文生图生产\n' +
+          '1. 从 public/asset-data.json ASSETS 提取这些素材的 prompt，使用 produce-skill 的 asset-generate.js --type 12 执行文生图生产\n' +
           '2. 将生成的图片下载到 素材库/download/ 目录\n' +
           '3. 使用 transparent-bg-skill 对每张图片进行去背景透明化处理\n' +
           '4. 使用 upload-skill 将透明化后的图片上传到 CS，获取 CDN URL\n' +
-          '5. 更新 素材库/materials.json、素材库/preview.html 中对应条目的 url 字段，并写入 asset-urls.ts';
+          '5. 更新 public/preview.html 中对应条目的 url 字段，并写入 asset-urls.ts';
       }
       return '请帮我生产「' + sec.label + '」素材（' + total + '张图片：' + nameList + '）。\n' +
-        '从 素材库/assets.json 中提取这些素材的 prompt，使用 produce-skill 的 asset-generate.js --type 12 执行文生图生产，' +
-        '生产完成后更新 素材库/materials.json、素材库/preview.html 中对应条目的 url 字段，并写入 asset-urls.ts。';
+        '从 public/asset-data.json ASSETS 中提取这些素材的 prompt，使用 produce-skill 的 asset-generate.js --type 12 执行文生图生产，' +
+        '生产完成后更新 public/preview.html 中对应条目的 url 字段，并写入 asset-urls.ts。';
     }
 
     function copyAndFocus(text, label) {
@@ -1475,7 +1547,7 @@
       if (ttsParts.length) {
         prompt += '【TTS语音】' + ttsParts.join('、') + '\n→ 使用 produce-skill TTS 生产 → 更新 URL\n\n';
       }
-      prompt += '生产完成后同步更新 素材库/materials.json、素材库/tts.json、素材库/preview.html 中所有已生产素材的 url 字段，并写入 asset-urls.ts。';
+      prompt += '生产完成后同步更新 素材库/materials.json、素材库/tts.json、public/preview.html 中所有已生产素材的 url 字段，并写入 asset-urls.ts。';
       copyAndFocus(prompt, '全部素材');
     }
 
@@ -1488,11 +1560,11 @@
       var parts = keys.map(function(kv) { return kv.val.label + '(' + kv.val.items.length + kv.val.type + ')'; }).join('、');
 
       if (cat === 'scene') {
-        copyAndFocus('请帮我一键生产全部【场景类素材】（' + parts + '）。\n场景素材不需要透明化处理，直接生产即可：\n读取 素材库/assets.json，对场景背景类素材使用 produce-skill 的 asset-generate.js --type 12 批量生产，\n生产完成后同步更新 素材库/materials.json、素材库/preview.html 中对应条目的 url 字段，并写入 asset-urls.ts。', '场景类素材');
+        copyAndFocus('请帮我一键生产全部【场景类素材】（' + parts + '）。\n场景素材不需要透明化处理，直接生产即可：\n读取 public/asset-data.json ASSETS，对场景背景类素材使用 produce-skill 的 asset-generate.js --type 12 批量生产，\n生产完成后同步更新 public/preview.html 中对应条目的 url 字段，并写入 asset-urls.ts。', '场景类素材');
       } else if (cat === 'prop') {
-        copyAndFocus('请帮我一键生产全部【道具类素材】并完成透明化处理（' + parts + '）。\n道具素材需要透明背景，完整流程：\n1. 读取 素材库/assets.json，对道具/工具/特效/UI类素材使用 produce-skill 的 asset-generate.js --type 12 批量文生图\n2. 将生成的图片下载到 素材库/download/ 目录\n3. 使用 transparent-bg-skill 批量去背景透明化\n4. 使用 upload-skill 将透明化后的图片上传到 CS，获取 CDN URL\n5. 同步更新 素材库/materials.json、素材库/preview.html 中对应条目的 url 字段，并写入 asset-urls.ts', '道具类素材');
+        copyAndFocus('请帮我一键生产全部【道具类素材】并完成透明化处理（' + parts + '）。\n道具素材需要透明背景，完整流程：\n1. 读取 public/asset-data.json ASSETS，对道具/工具/特效/UI类素材使用 produce-skill 的 asset-generate.js --type 12 批量文生图\n2. 将生成的图片下载到 素材库/download/ 目录\n3. 使用 transparent-bg-skill 批量去背景透明化\n4. 使用 upload-skill 将透明化后的图片上传到 CS，获取 CDN URL\n5. 同步更新 public/preview.html 中对应条目的 url 字段，并写入 asset-urls.ts', '道具类素材');
       } else if (cat === 'tts') {
-        copyAndFocus('请帮我一键生产全部【TTS语音】（' + parts + '）。\n读取 素材库/assets.json 中 type 21 的 TTS 数据，使用 produce-skill 的 asset-generate.js --type 21 执行批量生产，\n生产完成后同步更新 素材库/tts.json 和 素材库/preview.html 中对应条目的 url 字段。', 'TTS语音');
+        copyAndFocus('请帮我一键生产全部【TTS语音】（' + parts + '）。\n读取 public/asset-data.json 中 type 21 的 TTS 数据，使用 produce-skill 的 asset-generate.js --type 21 执行批量生产，\n生产完成后同步更新 public/preview.html 中对应条目的 url 字段。', 'TTS语音');
       }
     }
 
@@ -1550,16 +1622,30 @@
         '<div class="pipeline-footer-bar"><div class="pf-label">📊 总进度</div><div class="pf-bar-bg"><div class="pf-bar-fill" style="width:'+totalPct+'%"></div></div><div class="pf-count"><span class="done">'+totalDone+'</span><span class="sep"> / </span><span class="total">'+totalAll+'</span></div><div class="pf-btn">'+footerBtn+'</div></div>';
     }
 
-    // ═══ 初始化 ═══
-    renderPipeline();
-    renderScenes();
-    for (var g of PROP_GROUPS) {
-      renderPropGrid(g.items, g.gridId);
-    }
-    renderChars();
-    renderBGM();
-    renderTTS();
-    renderSoundEffects();
+    // ═══ 初始化：fetch 远端 asset-data.json 后渲染 ═══
+    (async function main() {
+      let data = null;
+      const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+      const urls = isLocal
+        ? [LOCAL_ASSET_DATA_URL, ASSET_DATA_URL]   // 本地优先，再回退 CS
+        : [ASSET_DATA_URL, LOCAL_ASSET_DATA_URL];  // CS 优先，再回退本地
+      for (const url of urls) {
+        try {
+          const r = await fetch(url, { cache: 'no-cache' });
+          if (r.ok) { data = await r.json(); console.log('[preview] asset-data.json 来源:', url); break; }
+        } catch (e) {}
+      }
+      if (data) buildRuntimeData(data);
+
+      renderPipeline();
+      renderScenes();
+      for (const g of PROP_GROUPS) renderPropGrid(g.items, g.gridId);
+      renderChars();
+      renderBGM();
+      renderTTS();
+      renderSoundEffects();
+      initNav();
+    })();
 
     // ═══ 导航栏：平滑滚动 + scroll-spy ═══
     function navTo(id) {
@@ -1567,7 +1653,7 @@
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    (function initNav() {
+    function initNav() {
       var navBar = document.getElementById('navBar');
       var items = navBar.querySelectorAll('.nav-item');
       var sectionIds = Array.from(items).map(function(btn) {
@@ -1636,7 +1722,7 @@
           ticking = false;
         });
       }, { passive: true });
-    })();
+    }
 </script>
 </body>
 </html>

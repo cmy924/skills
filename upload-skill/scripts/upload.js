@@ -289,6 +289,21 @@ export function getAssetUrl(name: AssetName): string {
 	await fs.writeFile(assetUrlsPath, ts, 'utf-8')
 	console.error(`[upload] Updated ${assetUrlsPath} (${Object.keys(existing).length} entries)`)
 	console.error(`[upload] Updated ${assetUrlsJsonPath}`)
+
+	// 自动重新生成 asset-data.json（保持与 asset-urls.ts 同步）
+	const genScript = path.resolve(import.meta.dir, '../../preview-skill/scripts/gen-asset-data.mjs');
+	try {
+		const proc = Bun.spawn(['node', genScript], { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' });
+		await proc.exited;
+		if (proc.exitCode === 0) {
+			console.error('[upload] ✅ asset-data.json 已同步更新');
+		} else {
+			const err = await new Response(proc.stderr).text();
+			console.error('[upload] ⚠️  asset-data.json 更新失败:', err.trim());
+		}
+	} catch (e) {
+		console.error('[upload] ⚠️  无法运行 gen-asset-data.mjs:', e.message);
+	}
 }
 
 // ─── 主函数 ───
