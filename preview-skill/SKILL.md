@@ -1,7 +1,7 @@
 ```skill
 ---
 name: preview-skill
-description: AI素材工坊技能。基于通用模板自动生成 public/preview.html 可视化预览页，展示所有素材状态（场景背景、道具、TTS 语音、角色、BGM），含内置「素材生产线」仪表盘、左侧导航栏、Prompt 编辑器、重新生产弹窗。支持一键迁移到其他小游戏项目。触发词包括"AI素材工坊"、"打开AI素材工坊"、"preview"、"素材面板"、"生产面板"、"素材总览"、"查看素材"、"素材状态"、"生成预览页"、"更新预览页"。
+description: AI素材工坊技能。先运行 gen-asset-data.mjs 更新 asset-data.json，再判断是否需要重新生成 public/preview.html，最后用系统浏览器打开预览页。页面展示所有素材状态（场景背景、道具、TTS 语音、角色、BGM），含内置「素材生产线」仪表盘、左侧导航栏、Prompt 编辑器、重新生产弹窗。支持一键迁移到其他小游戏项目。触发词包括"素材预览"、"AI素材工坊"、"打开AI素材工坊"、"preview"、"素材面板"、"生产面板"、"素材总览"、"查看素材"、"素材状态"、"生成预览页"、"更新预览页"。
 ---
 
 # Preview Skill — AI素材工坊 · 模板化生成器
@@ -58,9 +58,33 @@ node .claude/skills/preview-skill/scripts/generate-preview.cjs --open
 
 ### 方式二：AI 对话触发
 
-当用户说"生成预览页"、"更新预览页"、"preview"时：
-1. 运行生成器脚本
-2. 执行上传 + 更新 Debug 面板链接
+当用户说"素材预览"、"生成预览页"、"更新预览页"、"preview"等触发词时，按以下顺序执行：
+
+**Step 1：运行 extract-skill，更新 asset-data.json**
+
+```bash
+node .claude/skills/preview-skill/scripts/gen-asset-data.mjs
+```
+
+**Step 2：判断是否需要重新生成 preview.html**
+
+比较 `public/asset-data.json` 与 `public/preview.html` 的修改时间：
+- `asset-data.json` 更新时间 > `preview.html` 更新时间 → **需要重新生成**
+- `preview.html` 不存在 → **需要生成**
+- 否则 → **跳过生成**，直接打开
+
+**Step 3：生成 preview.html（仅在需要时）**
+
+```bash
+node .claude/skills/preview-skill/scripts/generate-preview.cjs
+```
+
+**Step 4：打开预览页**
+
+```bash
+# 用系统默认浏览器打开（避免 VS Code 内置浏览器缓存问题）
+Invoke-Item "public/preview.html"
+```
 
 ## 页面布局
 
@@ -74,15 +98,23 @@ node .claude/skills/preview-skill/scripts/generate-preview.cjs --open
 │  [项目名]  │  ────────────────────────────────     │
 │          │  📋 游戏关卡详情                         │
 │ ─ 总览 ─  │  ────────────────────────────────     │
-│ 📊 生产线 ●│  📸 场景类 banner                      │
-│ 🗺️ 关卡   │    场景背景卡片网格                      │
+│ 📊 生产线 ●│  � 角色形象 + 音色配置                  │
+│ 🗺️ 关卡   │  ────────────────────────────────     │
+│ ─ 角色 ─  │  📸 场景类 banner                      │
+│ 🧑‍🎓 角色   │    场景背景卡片网格                      │
 │ ─ 场景 ─  │  ────────────────────────────────     │
 │ 🌊 背景图 ●│  🎭 道具类 banner                      │
 │ ─ 道具 ─  │    道具分组卡片网格（动态生成）            │
-│ [各道具] ● │  ────────────────────────────────     │
-│ ─ 音频 ─  │  👤 角色形象 + 音色配置                  │
-│ 🧑‍🎓 角色   │  🎵 BGM 试听                          │
-│ 🎵 BGM   │  🎙️ TTS 语音表                        ││ 🔊 音效   │                                       ││ 🗣️ TTS   ●│                                       │
+│ 关卡1     │  ────────────────────────────────     │
+│ [各道具] ● │  🗣️ TTS 语音表                         │
+│ 关卡2     │  ────────────────────────────────     │
+│ [各道具] ● │  🎵 BGM 试听                           │
+│ 关卡3     │  ────────────────────────────────     │
+│ [各道具] ● │  🔊 交互音效                            │
+│ ─ 音频 ─  │                                       │
+│ 🗣️ TTS   ●│                                       │
+│ 🎵 BGM   │                                       │
+│ 🔊 音效   │                                       │
 │ ▓▓▓░░ 60%│                                       │
 │ [↑ 顶部]  │                                       │
 └──────────┴──────────────────────────────────────┘
@@ -97,6 +129,32 @@ node .claude/skills/preview-skill/scripts/generate-preview.cjs --open
 | 📸 场景类 | `false` | 背景图、场景图 | 文生图 → 完成 |
 | 🎭 道具类 | `true` | 道具元素 | 文生图 → 下载 → 去背景 → 上传CS → 完成 |
 | 🎙️ TTS | — | 语音台词 | 语音合成 → 完成 |
+
+## 道具分组排序规则
+
+`buildPropGroups()` 在过滤掉场景类后，对道具分组按**关卡序号升序**排列，生成顺序同步应用于主内容区和左侧导航栏。
+
+### 关卡序号提取（`extractLevelNum(section)`）
+
+按优先级依次尝试：
+
+1. **`key` 字段前缀**：`L1_desk` → `1`，`L2_robot` → `2`，`L3_task_tag` → `3`
+2. **`label` 字段中的汉字**：`关卡1·桌面物品` → `1`，`关卡3·任务标签` → `3`
+3. **无法匹配**：返回 `99`，排到末尾（用于通用/跨关卡分组）
+
+### 排序行为
+
+- **跨关卡**：关卡1全部分组 → 关卡2全部分组 → 关卡3全部分组
+- **同关卡内**：保持 `asset-data.json` → `SECTIONS` 数组中的原始定义顺序（JS stable sort）
+- **通用分组**：序号 99，排在所有有编号关卡之后
+
+### 导航栏联动
+
+`buildNavItems()` 遍历排序后的 `propGroups`，在每次切换关卡序号时插入子分组标签 `<div class="nav-sub-label">关卡N</div>`，nav item 显示 `label` 中 `·` 后面的具体类型名（如 `桌面物品`、`故事卡片`），不重复显示"关卡N"前缀。
+
+### ⚠️ 扩展注意事项
+
+新增道具分组时，`SECTIONS` 中的 `key` 命名必须遵循 `L{N}_xxx` 格式（如 `L1_items`），或在 `label` 字段中包含"关卡N"（如 `关卡1·新道具`），否则排序会将其归入通用组（序号 99）排在末尾。
 
 ## 模板占位符
 
@@ -184,11 +242,83 @@ open public/preview.html
 
 ## 迁移到其他项目
 
-### 迁移步骤
+### 场景 A：已有 `asset-data.json` 的项目（迁移/复用）
 
 1. 复制 `.claude/skills/preview-skill/` 整个目录到新项目
-2. 确保新项目已有 `public/asset-data.json`（由 extract-skill 生成）和 `asset-urls.ts`
-3. 运行生成器：`node .claude/skills/preview-skill/scripts/generate-preview.cjs --open`
+2. 确保新项目已有 `asset-urls.ts`
+3. 运行同步 + 生成：
+   ```bash
+   node .claude/skills/preview-skill/scripts/gen-asset-data.mjs
+   node .claude/skills/preview-skill/scripts/generate-preview.cjs
+   Invoke-Item public/preview.html
+   ```
+
+### 场景 B：全新项目，无 `asset-data.json`（引导初始化）
+
+**唯一前提：`asset-urls.ts` 已存在**（其中的 `ASSET_URLS` 对象是素材 URL 的来源）。
+
+#### Step 1 — 生成空壳 asset-data.json
+
+```bash
+node .claude/skills/preview-skill/scripts/gen-asset-data.mjs
+```
+
+此时产出：
+- `ASSET_URLS` / `CHARACTERS` / `BGM_URLS` ✅（从 asset-urls.ts 读取）
+- `ASSETS[]` = `[]` ❌（无元数据，无 prompt/size/type）
+- `SECTIONS[]` = `[]` ❌（从 ASSETS 推导，ASSETS 空则也为空）
+
+#### Step 2 — AI 填充 ASSETS 元数据
+
+打开 `public/asset-data.json`，在 `"ASSETS": []` 中为每个素材补充结构：
+
+```json
+{
+  "materialId": "SCENE_L1_BG",
+  "name": "关卡1背景",
+  "type": 11,
+  "size": "1920x1080",
+  "transparentBg": false,
+  "prompt": "..."
+}
+```
+
+| 字段 | 说明 |
+|------|------|
+| `materialId` | 唯一 ID，对应 `asset-urls.ts` 中 `ASSET_URLS` 的 key |
+| `name` | 素材中文名，必须与 `ASSET_URLS` 的 key 完全一致（用于 URL 同步） |
+| `type` | `11` = 场景类，`12` = 道具类 |
+| `size` | 规格如 `1920x1080`，`800x800` |
+| `transparentBg` | 道具类是否需要去背景 |
+| `prompt` | 文生图提示词 |
+
+**可让 AI 以 `asset-urls.ts` 的 key 列表为脚手架批量生成初始 ASSETS 结构。**
+
+#### Step 3 — 重新同步 URL
+
+```bash
+node .claude/skills/preview-skill/scripts/gen-asset-data.mjs
+```
+
+此时 `ASSETS[].url` 将从 `asset-urls.ts` 补入，`SECTIONS` 也会从 `ASSETS` 自动推导分组。
+
+#### Step 4 — 生成 preview.html
+
+```bash
+node .claude/skills/preview-skill/scripts/generate-preview.cjs
+Invoke-Item public/preview.html
+```
+
+#### ⚠️ 重要：asset-data.json 不是构建产物
+
+`asset-data.json` 等同于源码，应纳入 Git 版本管理：
+
+```bash
+git add public/asset-data.json
+git commit -m "chore: 初始化素材元数据"
+```
+
+`preview.html` 是纯生成产物，建议加入 `.gitignore`。
 
 ### 通用部分（模板内置，无需修改）
 
@@ -212,6 +342,39 @@ open public/preview.html
 | 数据数组 | SCENES / PROP_GROUPS / CHARACTERS / BGMS / TTS |
 
 > **核心优势：** 模板 + 生成器完全解耦，所有项目专属数据由生成器自动提取注入。迁移零手工修改。
+
+## 关卡步骤关键字高亮
+
+生成器脚本中的 `highlightStep()` 函数对 `asset-data.json` → `LEVELS[].steps[]` 的文本进行关键字染色。
+
+### 高亮规则（按执行顺序）
+
+| 顺序 | 匹配内容 | 效果 | 示例 |
+|:---:|---------|------|------|
+| 1 | `（物品A、物品B）` 括号内含顿号的列表 | 每项转为红色小芯片 | `（手机、玩具熊）` |
+| 2 | `限时N秒`（可含括号） | 橙色强调框 + ⏱ | `限时120秒` |
+| 3 | `N选N` | 青色粗体 | `5选2` |
+| 4 | 数字 + 量词（轮/张/行/步/个/关/种/次/题） | 青色 | `2 轮` `4 张` |
+| 5 | 核心动词（拖拽/移走/点击/排序/分类/识别/标记/找出/区分） | 淡绿色 | `拖拽` `移走` |
+| 6 | `需全部正确` / `全部正确` / `需全部` | 橙色边框提示 | `需全部正确` |
+| 7 | 剩余全角括号内容 `（...）` | 灰色 | `（限时120秒）` |
+| 8 | `Step\d+[a-z]*：` 前缀 | 青色标签徽章 | `Step2a：` |
+
+### ⚠️ 关键设计规则：Step 前缀必须最后执行
+
+**Step 前缀规则不能提前执行**，原因是它向文本注入含 `rgba(78,205,196,0.15)` 等 CSS 颜色值的 `<span style="...">` 标签。
+
+若 `Step` 前缀替换在规则 1（括号物品列表）之前执行，规则 1 的正则 `[（(]([^）)]*[、，,][^）)]*)[）)]` 会将 CSS 中的 ASCII 括号 `(...)` 与逗号 `,` 误匹配，把 `rgba(78,205,196,0.15)` 里的数字 `78`、`205`、`196`、`0.15` 分别转成红色芯片，造成 HTML 严重损坏。
+
+**同理，规则 7（剩余括号）只能匹配全角括号 `（）`，不能同时匹配 ASCII 括号 `()`**，否则会破坏规则 1 之后已注入的 `var(--muted)` CSS 变量中的括号。
+
+### 扩展高亮规则
+
+在 `generate-preview.cjs` 的 `highlightStep()` 函数中添加新规则时，遵循以下原则：
+
+1. **纯文本处理规则**（不含 HTML）可放在任意位置（1-7）
+2. **注入含括号/逗号的 HTML** 的规则必须放在规则 1 之后（否则规则 1 会误匹配 CSS 属性值）
+3. **Step 前缀规则始终放最后**（第 8 步），因为它注入的 `rgba()` CSS 值含括号和逗号
 
 ## 注意事项
 

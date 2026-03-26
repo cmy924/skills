@@ -160,9 +160,23 @@ function guessIcon(name) {
 }
 
 // ─── 构建道具分组 (PROP_GROUPS) 从 SECTIONS ───
+// 从 key（如 L1_desk、L2_robot）或 label（如 关卡1·桌面物品）提取关卡序号，用于排序
+function extractLevelNum(section) {
+  const fromKey = section.key.match(/^L(\d+)/i);
+  if (fromKey) return parseInt(fromKey[1], 10);
+  const fromLabel = section.label.match(/关卡(\d+)/);
+  if (fromLabel) return parseInt(fromLabel[1], 10);
+  return 99; // 无关卡归属放末尾
+}
+
 function buildPropGroups() {
   return SECTIONS
     .filter(s => s.category !== 'scene')
+    .sort((a, b) => {
+      // 先按关卡序号升序排列，同关卡内保持原始顺序（stable sort）
+      const la = extractLevelNum(a), lb = extractLevelNum(b);
+      return la - lb;
+    })
     .map(s => {
       const items = (s.materialIds || [])
         .map(mid => {
@@ -296,8 +310,8 @@ function buildSoundEffects() {
   if (!indexSource) return [];
   const soundsRef = loadSoundsReference();
 
-  // 扫描 soundLibrary.play('xxx') 调用
-  const regex = /soundLibrary\.play\(['"]([\w-]+)['"]\)/g;
+  // 扫描 soundLibrary.play('xxx') 或 soundLibrary.play('xxx', {...}) 调用
+  const regex = /soundLibrary\.play\(['"]([\w-]+)['"]/g;
   const usageMap = {};
   let match;
   while ((match = regex.exec(indexSource)) !== null) {
@@ -309,7 +323,7 @@ function buildSoundEffects() {
   // 提取使用上下文
   const lines = indexSource.split('\n');
   for (let i = 0; i < lines.length; i++) {
-    const lineRegex = /soundLibrary\.play\(['"]([\w-]+)['"]\)/g;
+    const lineRegex = /soundLibrary\.play\(['"]([\w-]+)['"]/g;
     let lm;
     while ((lm = lineRegex.exec(lines[i])) !== null) {
       const id = lm[1];
@@ -347,75 +361,156 @@ function buildNavItems(scenes, propGroups) {
   html += '    <button class="nav-item active" onclick="navTo(\'sec-pipeline\')"><span class="nav-icon">📊</span>生产线<span class="nav-dot empty"></span></button>\n';
   html += '    <button class="nav-item" onclick="navTo(\'sec-levels\')"><span class="nav-icon">🗺️</span>关卡设计</button>\n';
   html += '  </div>\n';
-
+  // 角色（独立分组，置于场景之前）
+  html += '\n  <div class="nav-group-label">角色</div>\n';
+  html += '  <div class="nav-items">\n';
+  html += '    <button class="nav-item" onclick="navTo(\'sec-chars\')" ><span class="nav-icon">🧑‍🎓</span>角色形象</button>\n';
+  html += '  </div>\n';
   // 场景
   html += '\n  <div class="nav-group-label">场景</div>\n';
   html += '  <div class="nav-items">\n';
   html += '    <button class="nav-item" onclick="navTo(\'sec-scenes\')"><span class="nav-icon">🌊</span>背景图<span class="nav-dot empty"></span></button>\n';
   html += '  </div>\n';
 
-  // 道具
+  // 道具 — 按关卡子分组
   html += '\n  <div class="nav-group-label">道具</div>\n';
-  html += '  <div class="nav-items">\n';
+  let lastLevel = null;
   for (const g of propGroups) {
-    html += '    <button class="nav-item" onclick="navTo(\'' + g.sectionId + '\')"><span class="nav-icon">' + g.icon + '</span>' + g.label.replace(/\s*&\s*/g, '&amp;').split(/[·（(]/)[0].trim() + '<span class="nav-dot empty"></span></button>\n';
+    const lv = extractLevelNum(g);
+    const lvLabel = lv < 99 ? '关卡' + lv : '通用';
+    if (lvLabel !== lastLevel) {
+      if (lastLevel !== null) html += '  </div>\n'; // 结束上一个子组
+      html += '  <div class="nav-sub-label" style="padding:2px 8px 1px 20px;font-size:10px;color:var(--muted);letter-spacing:.05em;margin-top:4px">' + lvLabel + '</div>\n';
+      html += '  <div class="nav-items">\n';
+      lastLevel = lvLabel;
+    }
+    // 显示·后面的具体类型名（如 桌面物品、故事卡片），截掉"关卡N·"前缀
+    const specificLabel = g.label.includes('·') ? g.label.split('·')[1] : g.label;
+    html += '    <button class="nav-item" onclick="navTo(\'' + g.sectionId + '\')"><span class="nav-icon">' + g.icon + '</span>' + specificLabel + '<span class="nav-dot empty"></span></button>\n';
   }
-  html += '  </div>\n';
+  if (lastLevel !== null) html += '  </div>\n'; // 结束最后一个子组
 
-  // 音频
+  // 音频（TTS → BGM → 音效）
   html += '\n  <div class="nav-group-label">音频</div>\n';
   html += '  <div class="nav-items">\n';
-  html += '    <button class="nav-item" onclick="navTo(\'sec-chars\')"><span class="nav-icon">🧑‍🎓</span>角色</button>\n';
-  html += '    <button class="nav-item" onclick="navTo(\'sec-bgm\')"><span class="nav-icon">🎵</span>BGM</button>\n';
-  html += '    <button class="nav-item" onclick="navTo(\'sec-sfx\')"><span class="nav-icon">🔊</span>音效</button>\n';
-  html += '    <button class="nav-item" onclick="navTo(\'sec-tts\')"><span class="nav-icon">🗣️</span>TTS<span class="nav-dot empty"></span></button>\n';
+  html += '    <button class="nav-item" onclick="navTo(\'sec-tts\')" ><span class="nav-icon">🗣️</span>TTS<span class="nav-dot empty"></span></button>\n';
+  html += '    <button class="nav-item" onclick="navTo(\'sec-bgm\')" ><span class="nav-icon">🎵</span>BGM</button>\n';
+  html += '    <button class="nav-item" onclick="navTo(\'sec-sfx\')" ><span class="nav-icon">🔊</span>音效</button>\n';
   html += '  </div>\n';
 
   return html;
 }
 
+// ─── 关卡步骤关键字高亮 ───
+function highlightStep(text) {
+  // 1. 括号内含顿号的物品列表 → 红色小芯片（先处理，避免后面规则污染）
+  text = text.replace(/[（(]([^）)]*[、，,][^）)]*)[）)]/g, function(_, inner) {
+    if (/限时|秒/.test(inner)) return '（' + inner + '）'; // 跳过，交给限时规则
+    const items = inner.split(/[、，,]/).map(s => s.trim()).filter(Boolean);
+    const chips = items.map(item =>
+      '<span style="display:inline-block;background:rgba(255,107,107,0.12);color:#ff6b6b;padding:0 5px;border-radius:4px;border:1px solid rgba(255,107,107,0.25);font-size:11px;margin:0 1px">' + item + '</span>'
+    ).join('');
+    return '<span style="color:var(--muted);font-size:11px">（</span>' + chips + '<span style="color:var(--muted);font-size:11px">）</span>';
+  });
+
+  // 2. 限时 N 秒 → 橙色强调框
+  text = text.replace(/[（(]?(限时\d+秒)[）)]?/g,
+    '<span style="display:inline-block;background:rgba(245,166,35,0.15);color:#f5a623;font-weight:700;padding:0 5px;border-radius:4px;border:1px solid rgba(245,166,35,0.3)">⏱ $1</span>');
+
+  // 3. N选N → 青色粗体
+  text = text.replace(/(\d+选\d+)/g,
+    '<span style="color:#4ecdc4;font-weight:700">$1</span>');
+
+  // 4. 数字 + 量词 → 青色
+  text = text.replace(/(\d+\s*(?:轮|张|行|步|个|关|种|次|题))/g,
+    '<span style="color:#4ecdc4;font-weight:600">$1</span>');
+
+  // 5. 核心动词 → 淡绿色
+  text = text.replace(/(拖拽|移走|点击|排序|分类|识别|标记|找出|区分)/g,
+    '<span style="color:#a8e6cf;font-weight:600">$1</span>');
+
+  // 6. 需全部正确 → 橙色边框提示
+  text = text.replace(/(需全部正确|全部正确|需全部)/g,
+    '<span style="color:#f5a623;font-size:11px;border:1px solid rgba(245,166,35,0.4);padding:0 4px;border-radius:3px">$1</span>');
+
+  // 7. 剩余普通中文括号 → 灰色（只匹配全角括号，避免误匹配 CSS 中的 ASCII 括号）
+  text = text.replace(/（([^）<]+)）/g,
+    '<span style="color:var(--muted)">（$1）</span>');
+
+  // 8. Step 前缀 → 青色标签（最后执行，避免 rgba() 被上面规则误匹配）
+  text = text.replace(/(Step\d+[a-z]*[：:])/g,
+    '<span style="display:inline-block;background:rgba(78,205,196,0.15);color:#4ecdc4;font-weight:700;padding:0 5px;border-radius:4px;margin-right:4px;border:1px solid rgba(78,205,196,0.3)">$1</span>');
+
+  return text;
+}
+
 // ─── 构建关卡 HTML ───
 function buildLevelsHTML() {
-  // 尝试从现有 preview.html 继承关卡 HTML（因为关卡设计是手写的）
-  if (existingPreview) {
-    const levelsMatch = existingPreview.match(/<div class="section" id="sec-levels">([\s\S]*?)<\/div>\s*\n\s*<div class="category-banner/);
-    if (levelsMatch) {
-      return '<div class="section" id="sec-levels">' + levelsMatch[1] + '</div>';
-    }
+  // 优先使用 asset-data.json 中的 LEVELS 数据
+  const levels = (assetData && assetData.LEVELS) || [];
+
+  if (!levels.length) {
+    return '<div class="section" id="sec-levels">\n  <h2 class="section-title">游戏关卡</h2>\n  <p style="color:var(--muted)">暂无关卡数据（请在 asset-data.json 中添加 LEVELS 字段）</p>\n</div>';
   }
 
-  // 从 ASSETS 推断关卡（SCENE_L{n}_BG 模式）
-  const levelMap = {};
-  for (const a of ASSETS) {
-    const m = a.materialId.match(/^SCENE_L(\d+)_BG/i);
-    if (m) {
-      const num = parseInt(m[1]);
-      if (!levelMap[num]) levelMap[num] = a;
-    }
+  // tag 类型 → CSS 类
+  function tagClass(type) {
+    if (type === 'target') return 'fish';
+    if (type === 'distractor') return 'mechanic';
+    if (type === 'difficulty') return 'difficulty';
+    return 'mechanic';
   }
-  const levelNums = Object.keys(levelMap).map(Number).sort((a, b) => a - b);
-  if (!levelNums.length) {
-    return '<div class="section" id="sec-levels">\n  <h2 class="section-title">游戏关卡</h2>\n  <p style="color:var(--muted)">暂无关卡数据</p>\n</div>';
+  // tag 类型 → emoji 前缀
+  function tagEmoji(type) {
+    if (type === 'target') return '◉ ';
+    if (type === 'distractor') return '◉ ';
+    if (type === 'difficulty') return '★ ';
+    return '◈ ';
   }
 
-  const colors = ['#4ecdc4', '#f5a623', '#ff6b6b', '#a78bfa', '#4ecdc4'];
   let html = '<div class="section" id="sec-levels">\n';
-  html += '  <h2 class="section-title">游戏关卡 (' + levelNums.length + ')</h2>\n';
+  html += '  <h2 class="section-title">游戏关卡 (' + levels.length + ')</h2>\n';
   html += '  <div class="grid grid-levels">\n';
-  for (let idx = 0; idx < levelNums.length; idx++) {
-    const num = levelNums[idx];
-    const a = levelMap[num];
-    const color = colors[idx % colors.length];
-    const bgUrl = a.url || null;
-    const bgThumb = bgUrl ? '<div class="level-bg-thumb" style="background-image:url(\'' + bgUrl + '\')"></div>' : '';
+
+  for (const lv of levels) {
+    const color = lv.color || '#4ecdc4';
+    const bgUrl = (ASSET_URLS && ASSET_URLS[lv.bgKey]) || '';
+    const bgThumb = bgUrl
+      ? '<div class="level-bg-thumb" style="background-image:url(\'' + bgUrl + '\')"></div>\n'
+      : '';
+
     html += '    <div class="level-card" style="border-top: 3px solid ' + color + '">\n';
-    html += '      ' + bgThumb + '\n';
+    html += '      ' + bgThumb;
     html += '      <div class="level-header">\n';
-    html += '        <span class="level-icon">' + guessIcon('关卡' + num) + '</span>\n';
-    html += '        <div><div class="level-name">关卡' + num + '</div></div>\n';
+    html += '        <span class="level-icon">' + guessIcon('关卡' + lv.num) + '</span>\n';
+    html += '        <div>\n';
+    html += '          <div class="level-name">关卡' + lv.num + ' — ' + (lv.title || '') + '</div>\n';
+    if (lv.subtitle) {
+      html += '          <div class="level-subtitle">' + lv.subtitle + '</div>\n';
+    }
+    html += '        </div>\n';
     html += '      </div>\n';
+    if (lv.steps && lv.steps.length) {
+      html += '      <div class="level-body">\n';
+      html += '        <h4>基本玩法</h4>\n';
+      html += '        <ul>\n';
+      for (const step of lv.steps) {
+        html += '          <li>' + highlightStep(step) + '</li>\n';
+      }
+      html += '        </ul>\n';
+      if (lv.tags && lv.tags.length) {
+        html += '        <h4>出现元素</h4>\n';
+        html += '        <div class="level-tags">\n';
+        for (const tag of lv.tags) {
+          html += '          <span class="level-tag ' + tagClass(tag.type) + '">' + tagEmoji(tag.type) + tag.text + '</span>\n';
+        }
+        html += '        </div>\n';
+      }
+      html += '      </div>\n';
+    }
     html += '    </div>\n';
   }
+
   html += '  </div>\n</div>';
   return html;
 }
@@ -423,6 +518,20 @@ function buildLevelsHTML() {
 // ─── 构建内容区 HTML ───
 function buildSectionsHTML(propGroups) {
   let html = '';
+
+  // 角色形象（置于场景之前）
+  html += '<div class="section" id="sec-chars">\n';
+  html += '  <h2 class="section-title">角色形象 · 音色配置</h2>\n';
+  html += '  <div class="grid grid-char" id="charsGrid"></div>\n';
+  html += '  <div style="margin-top:16px">\n';
+  html += '    <div class="table-wrap">\n';
+  html += '      <table class="tts-table">\n';
+  html += '        <thead><tr><th style="width:80px">角色</th><th style="width:100px">ID</th><th style="width:80px">model</th><th style="width:80px">ref_audio</th><th>音色描述</th></tr></thead>\n';
+  html += '        <tbody id="voiceConfigTable"></tbody>\n';
+  html += '      </table>\n';
+  html += '    </div>\n';
+  html += '  </div>\n';
+  html += '</div>\n\n';
 
   // 场景类 banner
   html += '<div class="category-banner scene-cat" id="sec-scenes">\n';
@@ -454,43 +563,29 @@ function buildSectionsHTML(propGroups) {
     html += '</div>\n\n';
   }
 
-  // 角色形象
-  html += '<div class="section" id="sec-chars">\n';
-  html += '  <h2 class="section-title">角色形象 · 音色配置</h2>\n';
-  html += '  <div class="grid grid-char" id="charsGrid"></div>\n';
-  html += '  <div style="margin-top:16px">\n';
-  html += '    <div class="table-wrap">\n';
-  html += '      <table class="tts-table">\n';
-  html += '        <thead><tr><th style="width:80px">角色</th><th style="width:100px">ID</th><th style="width:80px">model</th><th style="width:80px">ref_audio</th><th>音色描述</th></tr></thead>\n';
-  html += '        <tbody id="voiceConfigTable"></tbody>\n';
-  html += '      </table>\n';
-  html += '    </div>\n';
-  html += '  </div>\n';
-  html += '</div>\n\n';
-
-  // BGM
-  html += '<div class="section" id="sec-bgm">\n';
-  html += '  <h2 class="section-title">BGM 音轨</h2>\n';
-  html += '  <div class="grid grid-audio" id="bgmGrid"></div>\n';
-  html += '</div>\n\n';
-
-  // 音效（ai-sounds 库）
-  html += '<div class="section" id="sec-sfx">\n';
-  html += '  <h2 class="section-title">🔊 交互音效 <span style="font-size:12px;color:var(--muted);font-weight:400">（ai-sounds 音效库）</span></h2>\n';
-  html += '  <div class="table-wrap">\n';
-  html += '    <table class="tts-table" id="sfxTable">\n';
-  html += '      <thead><tr><th style="width:40px">#</th><th style="width:120px">音效 ID</th><th style="width:150px">名称</th><th style="width:100px">分类</th><th>描述</th><th style="width:60px">使用</th><th style="width:80px">试听</th></tr></thead>\n';
-  html += '      <tbody></tbody>\n';
-  html += '    </table>\n';
-  html += '  </div>\n';
-  html += '</div>\n\n';
-
-  // TTS
+  // TTS（音频第一）
   html += '<div class="section" id="sec-tts">\n';
   html += '  <h2 class="section-title">TTS 语音 <button class="produce-btn tts-btn" onclick="produceSection(\'tts\')"><span class="icon">🎙️</span> 生产TTS</button><button class="refresh-btn" onclick="location.reload()"><span class="icon">🔄</span> 刷新</button></h2>\n';
   html += '  <div class="table-wrap">\n';
   html += '    <table class="tts-table" id="ttsTable">\n';
   html += '      <thead><tr><th style="width:40px">#</th><th style="width:70px">角色</th><th style="width:180px">编号</th><th style="width:100px">场景</th><th style="width:70px">模型</th><th style="width:70px">音色</th><th>台词内容</th><th style="width:180px">试听</th><th style="width:60px">状态</th></tr></thead>\n';
+  html += '      <tbody></tbody>\n';
+  html += '    </table>\n';
+  html += '  </div>\n';
+  html += '</div>\n\n';
+
+  // BGM（音频第二）
+  html += '<div class="section" id="sec-bgm">\n';
+  html += '  <h2 class="section-title">BGM 音轨</h2>\n';
+  html += '  <div class="grid grid-audio" id="bgmGrid"></div>\n';
+  html += '</div>\n\n';
+
+  // 音效（ai-sounds 库，音频第三）
+  html += '<div class="section" id="sec-sfx">\n';
+  html += '  <h2 class="section-title">🔊 交互音效 <span style="font-size:12px;color:var(--muted);font-weight:400">（ai-sounds 音效库）</span></h2>\n';
+  html += '  <div class="table-wrap">\n';
+  html += '    <table class="tts-table" id="sfxTable">\n';
+  html += '      <thead><tr><th style="width:40px">#</th><th style="width:120px">音效 ID</th><th style="width:150px">名称</th><th style="width:100px">分类</th><th>描述</th><th style="width:60px">使用</th><th style="width:80px">试听</th></tr></thead>\n';
   html += '      <tbody></tbody>\n';
   html += '    </table>\n';
   html += '  </div>\n';
@@ -507,9 +602,7 @@ function generate() {
   const bgms = buildBGMs();
   const tts = buildTTS();
   const soundEffects = buildSoundEffects();
-  const navItems = buildNavItems(scenes, propGroups);
-  const levelsHTML = buildLevelsHTML();
-  const sectionsHTML = buildSectionsHTML(propGroups);
+  // 导航、关卡卡片、内容区骨架已移至模板运行时动态生成，无需生成器注入
 
   // 角色名映射
   const roleNames = { narrator: '旁白', ui: 'UI语音' };
@@ -550,9 +643,7 @@ function generate() {
   output = output.replace(/\{\{GENERATED_AT\}\}/g, generatedAt);
   output = output.replace(/\{\{SOURCE_FILE\}\}/g, sourceFile);
   output = output.replace(/\{\{WORKSPACE_PATH\}\}/g, projectDir.replace(/\\/g, '\\\\'));
-  output = output.replace(/\{\{NAV_ITEMS\}\}/g, navItems);
-  output = output.replace(/\{\{LEVELS_HTML\}\}/g, levelsHTML);
-  output = output.replace(/\{\{SECTIONS_HTML\}\}/g, sectionsHTML);
+  // NAV_ITEMS / LEVELS_HTML / SECTIONS_HTML 已由模板运行时 JS 动态生成
   output = output.replace(/\{\{ASSET_DATA_URL\}\}/g, assetDataUrl);
   output = output.replace(/\{\{LOCAL_ASSET_DATA_URL\}\}/g, localAssetDataUrl);
   output = output.replace(/\{\{SOUND_EFFECTS_DATA\}\}/g, jsonStr(soundEffects));

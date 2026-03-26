@@ -986,7 +986,7 @@
             <div class="nav-brand-sub">{{PROJECT_SHORT_NAME}}</div>
         </div>
     </div>
-    {{NAV_ITEMS}}
+    <div id="navDynamic"></div>
     <div class="nav-progress" id="navProgress"><div class="nav-progress-fill" style="width:0%"></div></div>
     <div class="nav-footer">
         <button class="nav-scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑ 回到顶部</button>
@@ -1030,9 +1030,9 @@
     </div>
 </div>
 
-{{LEVELS_HTML}}
+<div id="levelsContainer"></div>
 
-{{SECTIONS_HTML}}
+<div id="sectionsContainer"></div>
 
 <div class="footer">
     AI素材工坊页 · 项目要求：所有资源必须使用 CDN URL，不支持相对路径<br>
@@ -1096,6 +1096,7 @@
 
       PROP_GROUPS = sections
         .filter(s => s.category !== 'scene')
+        .sort((a, b) => extractLevelNum(a) - extractLevelNum(b))
         .map(s => {
           const items = (s.materialIds || []).map(mid => {
             const asset = assets.find(a => a.materialId === mid);
@@ -1418,36 +1419,31 @@
       }).join('');
     }
 
-    // 音效试听（动态加载 ai-sounds 库）
-    var _sfxLib = null;
-    var _sfxLoading = false;
+    // 音效试听（直接使用 ai-sounds CDN 音频文件，无需 import）
+    var _sfxAudio = null;
+    var SFX_BASE = 'https://gcdncs.101.com/v0.1/static/js_component_push_content/js_component/product/ai-sounds/dist';
     async function playSfx(id, btn) {
-      if (!_sfxLib && !_sfxLoading) {
-        _sfxLoading = true;
-        btn.textContent = '⏳';
-        try {
-          var mod = await import('https://esm.sh/ai-sounds');
-          _sfxLib = mod.default || mod;
-        } catch(e) {
-          console.warn('ai-sounds CDN 不可用:', e);
-          showToast('⚠️ 音效库加载失败，可在开发环境中测试', 3000);
-          _sfxLoading = false;
-          btn.textContent = '▶';
-          return;
-        }
-        _sfxLoading = false;
+      // 停止上一个
+      if (_sfxAudio) {
+        _sfxAudio.pause();
+        _sfxAudio.currentTime = 0;
       }
-      if (!_sfxLib) { showToast('⚠️ 音效库加载中…', 1500); return; }
+      var audio = new Audio(SFX_BASE + '/' + encodeURIComponent(id) + '.m4a');
+      _sfxAudio = audio;
       btn.classList.add('playing');
       btn.textContent = '⏸';
+      audio.onended = function() {
+        btn.classList.remove('playing');
+        btn.textContent = '▶';
+      };
       try {
-        await _sfxLib.play(id);
+        await audio.play();
       } catch(e) {
         console.warn('播放失败:', id, e);
         showToast('⚠️ 播放失败: ' + id, 2000);
+        btn.classList.remove('playing');
+        btn.textContent = '▶';
       }
-      btn.classList.remove('playing');
-      btn.textContent = '▶';
     }
 
     // ═══ 生产命令系统 ═══
@@ -1622,6 +1618,110 @@
         '<div class="pipeline-footer-bar"><div class="pf-label">📊 总进度</div><div class="pf-bar-bg"><div class="pf-bar-fill" style="width:'+totalPct+'%"></div></div><div class="pf-count"><span class="done">'+totalDone+'</span><span class="sep"> / </span><span class="total">'+totalAll+'</span></div><div class="pf-btn">'+footerBtn+'</div></div>';
     }
 
+    // ═══ 运行时布局构建辅助函数（导航 + 内容区 + 关卡卡片）═══
+    function extractLevelNum(s) {
+      const fk = (s.key || '').match(/^L(\d+)/i);
+      if (fk) return parseInt(fk[1], 10);
+      const fl = (s.label || '').match(/关卡(\d+)/);
+      if (fl) return parseInt(fl[1], 10);
+      return 99;
+    }
+
+    function highlightStep(text) {
+      text = text.replace(/[（(]([^）)]*[、，,][^）)]*)[）)]/g, function(_, inner) {
+        if (/限时|秒/.test(inner)) return '（' + inner + '）';
+        const items = inner.split(/[、，,]/).map(s => s.trim()).filter(Boolean);
+        const chips = items.map(item => '<span style="display:inline-block;background:rgba(255,107,107,0.12);color:#ff6b6b;padding:0 5px;border-radius:4px;border:1px solid rgba(255,107,107,0.25);font-size:11px;margin:0 1px">' + item + '</span>').join('');
+        return '<span style="color:var(--muted);font-size:11px">（</span>' + chips + '<span style="color:var(--muted);font-size:11px">）</span>';
+      });
+      text = text.replace(/[（(]?(限时\d+秒)[）)]?/g, '<span style="display:inline-block;background:rgba(245,166,35,0.15);color:#f5a623;font-weight:700;padding:0 5px;border-radius:4px;border:1px solid rgba(245,166,35,0.3)">⏱ $1</span>');
+      text = text.replace(/(\d+选\d+)/g, '<span style="color:#4ecdc4;font-weight:700">$1</span>');
+      text = text.replace(/(\d+\s*(?:轮|张|行|步|个|关|种|次|题))/g, '<span style="color:#4ecdc4;font-weight:600">$1</span>');
+      text = text.replace(/(拖拽|移走|点击|排序|分类|识别|标记|找出|区分)/g, '<span style="color:#a8e6cf;font-weight:600">$1</span>');
+      text = text.replace(/(需全部正确|全部正确|需全部)/g, '<span style="color:#f5a623;font-size:11px;border:1px solid rgba(245,166,35,0.4);padding:0 4px;border-radius:3px">$1</span>');
+      text = text.replace(/（([^）<]+)）/g, '<span style="color:var(--muted)">（$1）</span>');
+      text = text.replace(/(Step\d+[a-z]*[：:])/g, '<span style="display:inline-block;background:rgba(78,205,196,0.15);color:#4ecdc4;font-weight:700;padding:0 5px;border-radius:4px;margin-right:4px;border:1px solid rgba(78,205,196,0.3)">$1</span>');
+      return text;
+    }
+
+    function buildNavHTML(propGroups) {
+      let h = '';
+      h += '<div class="nav-group-label">总览</div><div class="nav-items">';
+      h += '<button class="nav-item active" onclick="navTo(\'sec-pipeline\')"><span class="nav-icon">📊</span>生产线<span class="nav-dot empty"></span></button>';
+      h += '<button class="nav-item" onclick="navTo(\'sec-levels\')"><span class="nav-icon">🗺️</span>关卡设计</button></div>';
+      h += '<div class="nav-group-label">角色</div><div class="nav-items">';
+      h += '<button class="nav-item" onclick="navTo(\'sec-chars\')"><span class="nav-icon">🧑‍🎓</span>角色形象</button></div>';
+      h += '<div class="nav-group-label">场景</div><div class="nav-items">';
+      h += '<button class="nav-item" onclick="navTo(\'sec-scenes\')"><span class="nav-icon">🌊</span>背景图<span class="nav-dot empty"></span></button></div>';
+      h += '<div class="nav-group-label">道具</div>';
+      let lastLv = null;
+      for (const g of propGroups) {
+        const lv = extractLevelNum(g), lvLabel = lv < 99 ? '关卡' + lv : '通用';
+        if (lvLabel !== lastLv) {
+          if (lastLv !== null) h += '</div>';
+          h += '<div class="nav-sub-label" style="padding:2px 8px 1px 20px;font-size:10px;color:var(--muted);letter-spacing:.05em;margin-top:4px">' + lvLabel + '</div><div class="nav-items">';
+          lastLv = lvLabel;
+        }
+        const lbl = g.label.includes('·') ? g.label.split('·')[1] : g.label;
+        h += '<button class="nav-item" onclick="navTo(\'' + g.sectionId + '\')"><span class="nav-icon">' + g.icon + '</span>' + lbl + '<span class="nav-dot empty"></span></button>';
+      }
+      if (lastLv !== null) h += '</div>';
+      h += '<div class="nav-group-label">音频</div><div class="nav-items">';
+      h += '<button class="nav-item" onclick="navTo(\'sec-tts\')"><span class="nav-icon">🗣️</span>TTS<span class="nav-dot empty"></span></button>';
+      h += '<button class="nav-item" onclick="navTo(\'sec-bgm\')"><span class="nav-icon">🎵</span>BGM</button>';
+      h += '<button class="nav-item" onclick="navTo(\'sec-sfx\')"><span class="nav-icon">🔊</span>音效</button></div>';
+      return h;
+    }
+
+    function buildSectionsHTMLRuntime(propGroups) {
+      let h = '';
+      h += '<div class="section" id="sec-chars"><h2 class="section-title">角色形象 · 音色配置</h2><div class="grid grid-char" id="charsGrid"></div><div style="margin-top:16px"><div class="table-wrap"><table class="tts-table"><thead><tr><th style="width:80px">角色</th><th style="width:100px">ID</th><th style="width:80px">model</th><th style="width:80px">ref_audio</th><th>音色描述</th></tr></thead><tbody id="voiceConfigTable"></tbody></table></div></div></div>';
+      h += '<div class="category-banner scene-cat" id="sec-scenes"><span>📸 场景类素材</span><span class="cat-sep">— 生成后直接使用，无需透明化处理</span><span class="cat-desc">文生图 → CDN URL → 完成</span></div>';
+      h += '<div class="section"><h2 class="section-title">场景背景 <button class="produce-btn" onclick="produceSection(\'scenes\')"><span class="icon">⚡</span> 生产</button><button class="refresh-btn" onclick="location.reload()"><span class="icon">🔄</span> 刷新</button></h2><div class="grid grid-bg" id="scenesGrid"></div></div>';
+      const firstId = propGroups[0] ? 'sec-' + propGroups[0].key : 'sec-props';
+      h += '<div class="category-banner prop-cat" id="' + firstId + '"><span>🎭 道具类素材</span><span class="cat-sep">— 生成后需透明化 + 重新上传</span><span class="cat-desc">文生图 → 下载 → 去背景 → 上传CS → 完成</span></div>';
+      for (const g of propGroups) {
+        h += '<div class="section" id="' + g.sectionId + '"><h2 class="section-title">' + g.label + ' (' + g.items.length + ') ';
+        h += '<button class="produce-btn prop-btn" onclick="produceSection(\'' + g.key + '\')"><span class="icon">⚡</span> 生产+透明化</button>';
+        h += '<button class="refresh-btn" onclick="location.reload()"><span class="icon">🔄</span> 刷新</button></h2><div class="grid grid-prop" id="' + g.gridId + '"></div></div>';
+      }
+      h += '<div class="section" id="sec-tts"><h2 class="section-title">TTS 语音 <button class="produce-btn tts-btn" onclick="produceSection(\'tts\')"><span class="icon">🎙️</span> 生产TTS</button><button class="refresh-btn" onclick="location.reload()"><span class="icon">🔄</span> 刷新</button></h2><div class="table-wrap"><table class="tts-table" id="ttsTable"><thead><tr><th style="width:40px">#</th><th style="width:70px">角色</th><th style="width:180px">编号</th><th style="width:100px">场景</th><th style="width:70px">模型</th><th style="width:70px">音色</th><th>台词内容</th><th style="width:180px">试听</th><th style="width:60px">状态</th></tr></thead><tbody></tbody></table></div></div>';
+      h += '<div class="section" id="sec-bgm"><h2 class="section-title">BGM 音轨</h2><div class="grid grid-audio" id="bgmGrid"></div></div>';
+      h += '<div class="section" id="sec-sfx"><h2 class="section-title">🔊 交互音效 <span style="font-size:12px;color:var(--muted);font-weight:400">（ai-sounds 音效库）</span></h2><div class="table-wrap"><table class="tts-table" id="sfxTable"><thead><tr><th style="width:40px">#</th><th style="width:120px">音效 ID</th><th style="width:150px">名称</th><th style="width:100px">分类</th><th>描述</th><th style="width:60px">使用</th><th style="width:80px">试听</th></tr></thead><tbody></tbody></table></div></div>';
+      return h;
+    }
+
+    function buildLevelsHTMLRuntime(levels, assetUrls) {
+      if (!levels || !levels.length) return '<div class="section" id="sec-levels"><h2 class="section-title">游戏关卡</h2><p style="color:var(--muted)">暂无关卡数据</p></div>';
+      const tagClass = t => t === 'target' ? 'fish' : t === 'difficulty' ? 'difficulty' : 'mechanic';
+      const tagEmoji = t => (t === 'target' || t === 'distractor') ? '◉ ' : t === 'difficulty' ? '★ ' : '◈ ';
+      let h = '<div class="section" id="sec-levels"><h2 class="section-title">游戏关卡 (' + levels.length + ')</h2><div class="grid grid-levels">';
+      for (const lv of levels) {
+        const color = lv.color || '#4ecdc4';
+        const bgUrl = (assetUrls && assetUrls[lv.bgKey]) || '';
+        const bgThumb = bgUrl ? '<div class="level-bg-thumb" style="background-image:url(\'' + bgUrl + '\')"></div>' : '';
+        h += '<div class="level-card" style="border-top:3px solid ' + color + '">' + bgThumb;
+        h += '<div class="level-header"><span class="level-icon">🗺️</span><div>';
+        h += '<div class="level-name">关卡' + lv.num + ' — ' + (lv.title || '') + '</div>';
+        if (lv.subtitle) h += '<div class="level-subtitle">' + lv.subtitle + '</div>';
+        h += '</div></div>';
+        if (lv.steps && lv.steps.length) {
+          h += '<div class="level-body"><h4>基本玩法</h4><ul>';
+          for (const step of lv.steps) h += '<li>' + highlightStep(step) + '</li>';
+          h += '</ul>';
+          if (lv.tags && lv.tags.length) {
+            h += '<h4>出现元素</h4><div class="level-tags">';
+            for (const tag of lv.tags) h += '<span class="level-tag ' + tagClass(tag.type) + '">' + tagEmoji(tag.type) + tag.text + '</span>';
+            h += '</div>';
+          }
+          h += '</div>';
+        }
+        h += '</div>';
+      }
+      h += '</div></div>';
+      return h;
+    }
+
     // ═══ 初始化：fetch 远端 asset-data.json 后渲染 ═══
     (async function main() {
       let data = null;
@@ -1635,7 +1735,13 @@
           if (r.ok) { data = await r.json(); console.log('[preview] asset-data.json 来源:', url); break; }
         } catch (e) {}
       }
-      if (data) buildRuntimeData(data);
+      if (data) {
+        buildRuntimeData(data);
+        // 动态构建导航、内容区骨架、关卡卡片（读 fetch 到的最新数据）
+        document.getElementById('navDynamic').innerHTML = buildNavHTML(PROP_GROUPS);
+        document.getElementById('sectionsContainer').innerHTML = buildSectionsHTMLRuntime(PROP_GROUPS);
+        document.getElementById('levelsContainer').innerHTML = buildLevelsHTMLRuntime(data.LEVELS || [], data.ASSET_URLS || {});
+      }
 
       renderPipeline();
       renderScenes();
