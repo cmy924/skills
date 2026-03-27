@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, type ReactNode } from 'react'
+import { useState, useRef, useCallback, useMemo, useEffect, type ReactNode } from 'react'
 import soundLibrary from 'ai-sounds'
 import styles from './DevPanel.module.css'
 
@@ -41,26 +41,50 @@ export interface DevPanelProps {
   projectId: string
 }
 
+// FIX: URL 参数解析移到模块级，避免每次渲染重复计算
+const _urlParams = new URLSearchParams(window.location.search)
+const _devHost = _urlParams.get('host')
+const _devPort = _urlParams.get('port') || '3005'
+const _isLocal = Boolean(_devHost)
+
+const DEFAULT_POS = { x: 8, y: 8 }
+const DEFAULT_SIZE = { w: 420, h: 0 }
+
 export default function DevPanel({
   sections = [], bgmKey, playBGM, stopBGM, materialWorkshopUrl, projectId
 }: DevPanelProps) {
   // ─── 面板内部状态 ───
   const [devPanelOpen, setDevPanelOpen] = useState(true)
-  const [devPos, setDevPos] = useState({ x: 8, y: 8 })
-  const [devSize, setDevSize] = useState({ w: 420, h: 0 })
+  const [devPos, setDevPos] = useState(DEFAULT_POS)
+  const [devSize, setDevSize] = useState(DEFAULT_SIZE)
   const devDragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
   const devResizeRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null)
   const devPanelRef = useRef<HTMLDivElement>(null)
 
-  // ─── 拖拽 ───
-  const onDevDragStart = (e: React.MouseEvent) => {
+  // FIX: 键盘快捷键 Ctrl+` 收展面板
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === '`') {
+        e.preventDefault()
+        setDevPanelOpen(p => !p)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  // ─── 拖拽（带边界限制） ───
+  const onDevDragStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
-    devDragRef.current = { startX: e.clientX, startY: e.clientY, origX: devPos.x, origY: devPos.y }
+    const startX = e.clientX, startY = e.clientY
+    const origX = devPos.x, origY = devPos.y
+    devDragRef.current = { startX, startY, origX, origY }
     const onMove = (ev: MouseEvent) => {
       if (!devDragRef.current) return
+      // FIX: 边界限制，防止面板拖出可视区域
       setDevPos({
-        x: Math.max(0, devDragRef.current.origX - (ev.clientX - devDragRef.current.startX)),
-        y: Math.max(0, devDragRef.current.origY + ev.clientY - devDragRef.current.startY)
+        x: Math.max(0, Math.min(window.innerWidth - 60, devDragRef.current.origX - (ev.clientX - devDragRef.current.startX))),
+        y: Math.max(0, Math.min(window.innerHeight - 30, devDragRef.current.origY + ev.clientY - devDragRef.current.startY))
       })
     }
     const onUp = () => {
@@ -70,10 +94,10 @@ export default function DevPanel({
     }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
-  }
+  }, [devPos.x, devPos.y])
 
   // ─── 缩放 ───
-  const onDevResizeStart = (e: React.MouseEvent) => {
+  const onDevResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     const el = devPanelRef.current
@@ -93,7 +117,13 @@ export default function DevPanel({
     }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
-  }
+  }, [devSize.w, devSize.h])
+
+  // FIX: 重置面板位置和大小
+  const resetPanel = useCallback(() => {
+    setDevPos(DEFAULT_POS)
+    setDevSize(DEFAULT_SIZE)
+  }, [])
 
   // ─── AI素材工坊 ───
   const openInBrowser = useCallback((url: string) => {
@@ -104,28 +134,22 @@ export default function DevPanel({
     a.click()
   }, [])
 
-  // FIX: 工坊地址策略 — 根据 URL 参数判断环境
-  // 本地开发: aic-view.sdp.101.com/dev/?id=xxx&host=127.0.0.1&port=3005
-  // 生产环境: 无 host/port 参数
-  const urlParams = new URLSearchParams(window.location.search)
-  const devHost = urlParams.get('host')
-  const devPort = urlParams.get('port') || '3005'
-  const isLocal = Boolean(devHost)
+  // FIX: 工坊地址使用模块级常量，避免每帧解析
   const workshopUrl = materialWorkshopUrl
-    || (isLocal
-      ? `http://${devHost}:${devPort}/preview.html`
+    || (_isLocal
+      ? `http://${_devHost}:${_devPort}/preview.html`
       : `https://cs.101.com/v0.1/static/aic_deploy/${projectId}/preview.html`)
 
   const openWorkshopPage = useCallback(() => {
     openInBrowser(workshopUrl)
   }, [openInBrowser, workshopUrl])
 
-  // ─── 区块渲染器 ───
+  // ─── 区块渲染器（useMemo 缓存样式对象） ───
   const scale = devSize.w / 220
   const baseFontSize = 12 * scale
-  const btnStyle = { fontSize: `${baseFontSize * 0.92}px`, padding: `${3 * scale}px ${8 * scale}px` }
-  const labelStyle = { fontSize: `${baseFontSize * 0.83}px` }
-  const gapStyle = { gap: `${4 * scale}px` }
+  const btnStyle = useMemo(() => ({ fontSize: `${baseFontSize * 0.92}px`, padding: `${3 * scale}px ${8 * scale}px` }), [baseFontSize, scale])
+  const labelStyle = useMemo(() => ({ fontSize: `${baseFontSize * 0.83}px` }), [baseFontSize])
+  const gapStyle = useMemo(() => ({ gap: `${4 * scale}px` }), [scale])
 
   const renderSection = (section: DevSection, index: number) => {
     switch (section.type) {
@@ -176,23 +200,35 @@ export default function DevPanel({
     <div
       ref={devPanelRef}
       className={styles.devPanel}
+      role="dialog"
+      aria-label="开发调试面板"
       style={{
         right: devPos.x,
         top: devPos.y,
-        width: devPanelOpen ? devSize.w : undefined,
+        width: devSize.w,
         height: devPanelOpen && devSize.h ? devSize.h : undefined,
-        fontSize: devPanelOpen ? baseFontSize : undefined
+        fontSize: baseFontSize
       }}
     >
       <div className={styles.devHeader} onMouseDown={onDevDragStart}>
         <button
           className={styles.devToggle}
           onClick={() => setDevPanelOpen(p => !p)}
-          style={{ fontSize: devPanelOpen ? `${baseFontSize * 0.92}px` : undefined }}
+          style={{ fontSize: `${baseFontSize * 0.92}px` }}
+          title="收展面板 (Ctrl+`)"
         >
           🛠 DEV {devPanelOpen ? '▼' : '▶'}
         </button>
-        <span className={styles.devDragHint} style={{ fontSize: devPanelOpen ? `${baseFontSize * 1.2}px` : undefined }}>⠿</span>
+        {/* FIX: 重置位置/大小按钮 */}
+        <button
+          className={styles.devResetBtn}
+          onClick={resetPanel}
+          style={{ fontSize: `${baseFontSize * 0.8}px` }}
+          title="重置面板位置和大小"
+        >
+          ↺
+        </button>
+        <span className={styles.devDragHint} style={{ fontSize: `${baseFontSize * 1.2}px` }}>⠿</span>
       </div>
       {devPanelOpen && (
         <div className={styles.devBody}>
@@ -259,7 +295,8 @@ export default function DevPanel({
           </div>
           {/* 缩放手柄 */}
           <div className={styles.devResizeHandle} onMouseDown={onDevResizeStart}
-            style={{ width: `${14 * scale}px`, height: `${14 * scale}px` }} />
+            style={{ width: `${14 * scale}px`, height: `${14 * scale}px` }}
+            title="拖拽调整大小" />
         </div>
       )}
     </div>

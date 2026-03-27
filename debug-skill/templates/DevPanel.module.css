@@ -44,6 +44,19 @@
 
 .devToggle:hover { background: rgba(0, 80, 0, 0.8); }
 
+.devResetBtn {
+  background: transparent;
+  color: #555;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.devResetBtn:hover { color: #0f0; }
+
 .devBody {
   margin-top: 4px;
   background: rgba(0, 0, 0, 0.85);
@@ -52,6 +65,7 @@
   padding: 10px;
   color: #ccc;
   min-width: 180px;
+  max-height: calc(100vh - 50px);
   backdrop-filter: blur(8px);
   flex: 1;
   overflow: auto;
@@ -92,6 +106,19 @@
   background: rgba(255, 255, 255, 0.2);
   border-color: #0f0;
   color: #fff;
+}
+
+.devBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: #444;
+  color: #888;
+}
+
+.devBtn:disabled:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #444;
+  color: #888;
 }
 
 .devBtnActive {
